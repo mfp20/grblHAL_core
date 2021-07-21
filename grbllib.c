@@ -34,6 +34,8 @@
 #include "report.h"
 #include "state_machine.h"
 #include "nvs_buffer.h"
+#include "motion_simple.h"
+#include "gcode.h"
 #ifdef ENABLE_BACKLASH_COMPENSATION
 #include "motion_control.h"
 #endif
@@ -52,6 +54,7 @@
 struct system sys = {0}; //!< System global variable structure.
 grbl_t grbl;
 grbl_hal_t hal;
+grbl_motion_t motion;
 
 // called from stream drivers while tx is blocking, return false to terminate
 
@@ -125,9 +128,21 @@ int grbl_enter (void)
     hal.stream.enqueue_realtime_command = protocol_enqueue_realtime_command;
     hal.limits.interrupt_callback = limit_interrupt_handler;
     hal.control.interrupt_callback = control_interrupt_handler;
+#if 1 // TODO need a definition for motion_simple
     hal.stepper.interrupt_callback = stepper_driver_interrupt_handler;
+#else
+    hal.stepper.interrupt_callback = simple_driver_interrupt_handler;
+#endif
     hal.stream_blocking_callback = stream_tx_blocking;
     hal.signals_cap.reset = hal.signals_cap.feed_hold = hal.signals_cap.cycle_start = On;
+
+    // Clear all and set some Motion function pointers
+    memset(&motion, 0, sizeof(grbl_motion_t));
+#if 1 // TODO need a definition for motion_simple
+    motion.protocol_execute_block = gc_execute_block;
+#else
+    motion.protocol_execute_block = simple_execute_block;
+#endif
 
     sys.cold_start = true;
 
