@@ -11,6 +11,8 @@ to a new one
 
 ![New architecture](docs/new_architecture.png?raw=true)
 
-with minimum changes to core code and board drivers.
+with minimum changes to core code and board drivers. This would allow new use cases
+
+![Use cases](docs/use_cases.png?raw=true)
 
 For more info have a look at the [original discussion](https://github.com/grblHAL/core/discussions/34).
