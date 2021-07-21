@@ -233,6 +233,16 @@ ISR_CODE void st_go_idle ()
         hal.stepper.enable(settings.steppers.idle_lock_time == 255 ? (axes_signals_t){AXES_BITMASK} : settings.steppers.deenergize);
 }
 
+// offloaded version of protocol's gcode reader
+status_code_t simple_execute_line (char *block, char *message) {
+    // TODO stores in buffer one line received from serial stream
+}
+
+// offloaded version of the stepper driver interrupt handler
+ISR_CODE void simple_driver_interrupt_handler (void)
+{
+    // TODO prepares data for steps execution
+}
 
 /* "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. Grbl employs
    the venerable Bresenham line algorithm to manage and exactly synchronize multi-axis moves.

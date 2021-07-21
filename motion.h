@@ -1,5 +1,5 @@
 /*
-  motion_simple.h - Motion entry points structures and capabilities type
+  motion.h - General motion structures
 
   Part of grblHAL
 
@@ -20,7 +20,7 @@
 */
 
 /*! \file
-    \brief Motion function pointers and data structures definitions.
+    \brief General motion structures.
 */
 
 #ifndef _MOTION_H_
@@ -34,15 +34,12 @@ typedef struct {
     /*! \brief Execute one motion block (gcode or raw steps).
 
     For single core boards without host offloading it is set to gc_execute_block().
-    On multicore boards or offloading motion to host, it is set to simple_execute_block().
+    On multicore boards or offloading motion to host, it is set to simple_execute_line().
     \returns current parser status.
     */
     status_code_t (*protocol_execute_block)(char *block, char *message);
 } grbl_motion_t;
 
 extern grbl_motion_t motion; //!< Global Motion struct.
-
-// Execute one block of simple raw steps
-status_code_t simple_execute_block (char *block, char *message);
 
 #endif

@@ -34,7 +34,7 @@
 #include "report.h"
 #include "state_machine.h"
 #include "nvs_buffer.h"
-#include "motion_simple.h"
+#include "motion.h"
 #include "gcode.h"
 #ifdef ENABLE_BACKLASH_COMPENSATION
 #include "motion_control.h"
@@ -141,7 +141,7 @@ int grbl_enter (void)
 #if 1 // TODO need a definition for motion_simple
     motion.protocol_execute_block = gc_execute_block;
 #else
-    motion.protocol_execute_block = simple_execute_block;
+    motion.protocol_execute_block = simple_execute_line;
 #endif
 
     sys.cold_start = true;

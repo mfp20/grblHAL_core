@@ -140,6 +140,13 @@ void st_update_plan_block_parameters();
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
 float st_get_realtime_rate();
 
+// when math is offloaded, stores in buffer one line received from serial stream
+status_code_t simple_execute_line (char *block, char *message);
+
+// when math is offloaded, prepares data for steps execution
+void simple_driver_interrupt_handler (void);
+
+//
 void stepper_driver_interrupt_handler (void);
 
 #endif
