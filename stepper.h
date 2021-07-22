@@ -26,8 +26,32 @@
 #ifndef _STEPPER_H_
 #define _STEPPER_H_
 
+// SEGMENT_BUFFER_SIZE is the number of small, short line segments for the stepper algorithm to execute.
+// * In the case the motion computation is offloaded to the host, the host sends segments instead of gcodes,
+//   so the segment buffer is maximized to absorb glitches on the communication interface.
+// * In the case the motion computation is offloaded to another mcu core we have more segment buffer,
+//   so other Grbl processes have more time to compute and do their thing before having to 
+//   come back and refill this buffer.
+#if BOARD_OFFLOAD_TO_HOST
+
+#ifdef SEGMENT_BUFFER_SIZE
+#undef SEGMENT_BUFFER_SIZE
+#endif
+#define SEGMENT_BUFFER_SIZE 180
+
+#elif BOARD_OFFLOAD_TO_CORE
+
+#ifdef SEGMENT_BUFFER_SIZE
+#undef SEGMENT_BUFFER_SIZE
+#endif
+#define SEGMENT_BUFFER_SIZE 40
+
+#else
+
 #ifndef SEGMENT_BUFFER_SIZE
 #define SEGMENT_BUFFER_SIZE 10
+#endif
+
 #endif
 
 typedef enum {
@@ -140,13 +164,10 @@ void st_update_plan_block_parameters();
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
 float st_get_realtime_rate();
 
-// when math is offloaded, stores in buffer one line received from serial stream
-status_code_t simple_execute_line (char *block, char *message);
+// receives one line from serial stream and stores 1 segment in segment buffer 
+status_code_t st_push_segment (char *block, char *message);
 
-// when math is offloaded, prepares data for steps execution
-void simple_driver_interrupt_handler (void);
-
-//
+// pops pre-computed segments from the step segment buffer and then executes
 void stepper_driver_interrupt_handler (void);
 
 #endif

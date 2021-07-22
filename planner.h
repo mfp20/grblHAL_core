@@ -24,9 +24,31 @@
 #ifndef _PLANNER_H_
 #define _PLANNER_H_
 
-// The number of linear motions that can be in the plan at any give time
+// BLOCK_BUFFER_SIZE is the number of linear motions that can be in the plan at any give time.
+// * In the case the motion computation is offloaded to the host, RAM must be available for segment buffer.
+//   And the block buffer is unused (as the host sends readily executable segments instead of gcodes).
+// * In the case the motion computation is offloaded to another mcu core the block buffer is reduced,
+//   so most of the RAM is made available for the segment buffer.
+#if BOARD_OFFLOAD_TO_HOST
+
+#ifdef BLOCK_BUFFER_SIZE
+#undef BLOCK_BUFFER_SIZE // ignore custom value in config.h
+#endif
+#define BLOCK_BUFFER_SIZE 1
+
+#elif BOARD_OFFLOAD_TO_CORE
+
+#ifdef BLOCK_BUFFER_SIZE
+#undef BLOCK_BUFFER_SIZE // ignore custom value in config.h
+#endif
+#define BLOCK_BUFFER_SIZE 9 // reduced size
+
+#else
+
 #ifndef BLOCK_BUFFER_SIZE
-  #define BLOCK_BUFFER_SIZE 36
+#define BLOCK_BUFFER_SIZE 36
+#endif
+
 #endif
 
 typedef union {

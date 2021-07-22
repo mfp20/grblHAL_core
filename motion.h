@@ -30,14 +30,32 @@
 
 #define MOTION_VERSION 1
 
+#ifndef BOARD_OFFLOAD_TO_CORE
+#define BOARD_OFFLOAD_TO_CORE 0
+#endif
+
+#ifndef BOARD_OFFLOAD_TO_HOST
+#define BOARD_OFFLOAD_TO_HOST 0
+#endif
+
+#ifndef BOARD_OFFLOAD_GRBL_CORE
+#define BOARD_OFFLOAD_GRBL_CORE 0
+#endif
+
+// BOARD_OFFLOAD_GRBL_CORE implies BOARD_OFFLOAD_TO_HOST
+#if BOARD_OFFLOAD_GRBL_CORE
+#undef BOARD_OFFLOAD_TO_HOST
+#define BOARD_OFFLOAD_TO_HOST 1
+#endif
+
 typedef struct {
     /*! \brief Execute one motion block (gcode or raw steps).
 
-    For single core boards without host offloading it is set to gc_execute_block().
-    On multicore boards or offloading motion to host, it is set to simple_execute_line().
+    For single core boards without host offloading it is set to execute_gcode().
+    On multicore boards or offloading motion to host, it is set to st_push_segment().
     \returns current parser status.
     */
-    status_code_t (*protocol_execute_block)(char *block, char *message);
+    status_code_t (*protocol_execute_motion_data)(char *block, char *message);
 } grbl_motion_t;
 
 extern grbl_motion_t motion; //!< Global Motion struct.

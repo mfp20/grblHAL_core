@@ -378,7 +378,7 @@ static status_code_t init_sync_motion (plan_line_data_t *pl_data, float pitch)
 // characters have been removed. In this function, all units and positions are converted and
 // exported to grbl's internal functions in terms of (mm, mm/min) and absolute machine
 // coordinates, respectively.
-status_code_t gc_execute_block(char *block, char *message)
+status_code_t execute_gcode(char *block, char *message)
 {
     static const parameter_words_t axis_words_mask = {
         .x = On,

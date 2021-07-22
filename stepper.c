@@ -233,15 +233,9 @@ ISR_CODE void st_go_idle ()
         hal.stepper.enable(settings.steppers.idle_lock_time == 255 ? (axes_signals_t){AXES_BITMASK} : settings.steppers.deenergize);
 }
 
-// offloaded version of protocol's gcode reader
-status_code_t simple_execute_line (char *block, char *message) {
-    // TODO stores in buffer one line received from serial stream
-}
-
-// offloaded version of the stepper driver interrupt handler
-ISR_CODE void simple_driver_interrupt_handler (void)
-{
-    // TODO prepares data for steps execution
+// receives one line from serial stream and stores 1 segment in segment buffer
+status_code_t st_push_segment (char *block, char *message) {
+    // TODO 
 }
 
 /* "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. Grbl employs
@@ -297,7 +291,10 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
     static bool backlash_motion;
 #endif
-
+#if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
+    // TODO pop pre-computed segments from the step segment buffer and then execute
+#else
+#endif
     // Start a step pulse when there is a block to execute.
     if(st.exec_block) {
 
@@ -669,7 +666,9 @@ void st_prep_buffer()
         return;
 
     while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-
+#if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
+    // TODO refill step segment buffer
+#else
         // Determine if we need to load a new planner block or if the block needs to be recomputed.
         if (pl_block == NULL) {
 
@@ -1082,6 +1081,7 @@ void st_prep_buffer()
                 plan_discard_current_block();
             }
         }
+#endif
     }
 }
 

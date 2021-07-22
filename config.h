@@ -212,7 +212,7 @@ __NOTE:__ these definitions are only referenced in this file. Do __NOT__ change!
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-// #define BLOCK_BUFFER_SIZE 36 // Uncomment to override default in planner.h.
+// #define BLOCK_BUFFER_SIZE 36 // Uncomment to override default in planner.h. Ignored for offloaded operations.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -220,7 +220,7 @@ __NOTE:__ these definitions are only referenced in this file. Do __NOT__ change!
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-// #define SEGMENT_BUFFER_SIZE 10 // Uncomment to override default in stepper.h.
+// #define SEGMENT_BUFFER_SIZE 10 // Uncomment to override default in stepper.h. Ignored for offloaded operations.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -622,5 +622,12 @@ __NOTE:__ these definitions are only referenced in this file. Do __NOT__ change!
 // End default values for run time configurable settings
 
 #endif // DEFAULT_HOMING_ENABLE
+
+// offload motion computing to second core
+#define BOARD_OFFLOAD_TO_CORE  0
+// offload motion computing to host
+#define BOARD_OFFLOAD_TO_HOST  0
+// offload grbl core to second core. Implies BOARD_OFFLOAD_TO_HOST.
+#define BOARD_OFFLOAD_GRBL_CORE 0
 
 #endif

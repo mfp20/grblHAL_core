@@ -220,10 +220,10 @@ bool protocol_main_loop (void)
 #if COMPATIBILITY_LEVEL == 0
                 else if(gc_state.last_error == Status_OK || gc_state.last_error == Status_GcodeToolChangePending) { // Parse and execute g-code block.
 #else
-                else { // Parse and execute g-code block.
+                else { // Parse and execute motion data (g-code block or stepper segment).
 
 #endif
-                    gc_state.last_error = motion.protocol_execute_block(line, user_message.show ? user_message.message : NULL);
+                    gc_state.last_error = motion.protocol_execute_motion_data(line, user_message.show ? user_message.message : NULL);
                 }
 
                 // Add a short delay for each block processed in Check Mode to
@@ -316,8 +316,8 @@ bool protocol_main_loop (void)
                 system_execute_line(xcommand);
             else if (state_get() & (STATE_ALARM|STATE_ESTOP|STATE_JOG)) // Everything else is gcode. Block if in alarm, eStop or jog state.
                 grbl.report.status_message(Status_SystemGClock);
-            else // Parse and execute g-code block or raw steps block.
-                motion.protocol_execute_block(xcommand, NULL);
+            else // Parse and execute motion data (g-code block or stepper segment).
+                motion.protocol_execute_motion_data(xcommand, NULL);
 
             xcommand[0] = '\0';
         }

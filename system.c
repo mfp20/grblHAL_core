@@ -138,7 +138,7 @@ void system_execute_startup (void)
             if (!settings_read_startup_line(n, line))
                 report_execute_startup_message(line, Status_SettingReadFail);
             else if (*line != '\0')
-                report_execute_startup_message(line, gc_execute_block(line, NULL));
+                report_execute_startup_message(line, execute_gcode(line, NULL));
         }
     }
 }
@@ -325,7 +325,7 @@ static status_code_t jog (sys_state_t state, char *args)
         args -= 2;
     }
 
-    return args == NULL ? Status_InvalidStatement : gc_execute_block(strcaps(args), NULL); // NOTE: $J= is ignored inside g-code parser and used to detect jog motions.
+    return args == NULL ? Status_InvalidStatement : execute_gcode(strcaps(args), NULL); // NOTE: $J= is ignored inside g-code parser and used to detect jog motions.
 }
 
 static status_code_t enumerate_alarms (sys_state_t state, char *args)
@@ -733,7 +733,7 @@ static status_code_t set_startup_line (sys_state_t state, char *args, uint_fast8
 
     if(strlen(args) >= (sizeof(stored_line_t) - 1))
         retval = Status_Overflow;
-    else if ((retval = gc_execute_block(args, NULL)) == Status_OK) // Execute gcode block to ensure block is valid.
+    else if ((retval = execute_gcode(args, NULL)) == Status_OK) // Execute gcode block to ensure block is valid.
         settings_write_startup_line(lnr, args);
 
     return retval;
