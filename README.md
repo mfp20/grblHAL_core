@@ -1,26 +1,40 @@
 # grblHAL offloaded core ##
 
 ## 1. Introduction
+**This is a development version, not for users. It can literally set your house on fire.**
 
-This is a fork of [grblHAL core](https://github.com/grblHAL/core), modified to split the core from the motion computing so that it can be offloaded on host, extra cores in the mcu or external co-processor (ex: fpga). It is a development version, not for users.
+This is a fork of [grblHAL core](https://github.com/grblHAL/core), modified to split the core from the motion computing so that it can be offloaded on host, extra cores in the mcu, or external co-processor (ex: fpga).
+This change is needed in order to import a couple of ideas from [Klipper firmware](https://www.klipper3d.org/) (or on [github](https://github.com/KevinOConnor/klipper)):
+* off load the computational heavy-lifting from the MCU in order to maximize performance,
+* being able to use more MCUs/boards in sync as one single printer.
+
+For more info have a look at the [original discussion](https://github.com/grblHAL/core/discussions/34).
 
 ## 2. The Plan
 
-The idea is to go from current architecture 
+The plan is to go from current architecture to a new one, introducing minimum changes to core code and board drivers.
 
-![Current architecture](docs/current_architecture.png?raw=true)
-(src: [https://awesome.tech/grbl-demystified/](https://awesome.tech/grbl-demystified/))
+*1. Current architecture (courtesy of http://awesome.tech/)*
+[![Current architecture](docs/current_architecture.png?raw=true)](https://awesome.tech/grbl-demystified/)
 
-to a new one
-
+*2. New architecture*
 ![New architecture](docs/new_architecture.png?raw=true)
 
-with minimum changes to core code and board drivers. The goal is to make the motion computation optional,
-in order to be able to offload it to another core or on another mcu (ex: main host currently sending g-codes).
+The goal is to make the motion computation optional, in order to be able to offload it to another core or on another mcu (ex: main host currently sending g-codes).
 Basically there's the need to push motion data directly in the last buffer available before the execution of steps.
-This would allow new use cases
+At the same time some extra sync information is added to critical structures in order to enable syncing among multiple MCUs and the host.
 
+*3. New use cases*
 ![Use cases](docs/use_cases.png?raw=true)
+
+Use case nr. 5 shows the HAL running on core0, grbl core running on core1 and the motion is computed on the host.
+In this way the I/O, the core tasks and the motion computing can run concurrently, maximizing performance
+and reducing jitter as pure I/O irqs are kept separated from the others.
+
+Use case nr. 6 instead, shows multiple boards working together. On startup the host computes deltas between its own time and every other mcu "board time"; then maintain this deltas using specialized sync messages to minimize jitter. All the motion is computed on host using its own "build time" and then segments are sent using the appropriate board times (computed using the deltas) in order to trigger events at the right time on every board.
+
+Changes must take into consideration the concurrency issues and introduce proper semaphores, mutexes, 
+critical sections and so on.
 
 ## 3. Workflow
 
@@ -50,7 +64,7 @@ But the final version might be able to set offloading at runtime (ex: on boot).
 
 The `protocol_main_loop()` receives motion commands and handle them to `execute_gcode()` (gcodes).
 So we introduce a new method `st_push_segment()` able to push segments in the segments buffer instead of handling them to the gcode parser.
-Segments pushed via this new method are considered to be ready for direct execution without further manipulation.
+Segments pushed via this new method must be ready for direct execution without further manipulation.
 [TODO]
 
 ### 3.2. Changes to stepper.c (workflow step 6 and 7)
@@ -58,6 +72,14 @@ Segments pushed via this new method are considered to be ready for direct execut
 #### 3.2.1. st_prep_buffer()
 
 The realtime execution system continously calls `st_prep_buffer()` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are executed.
+It relies on `sys` (core state machine system) to produce changes on the following variables:
+
+```c
+plan_block_t *pl_block;    // Pointer to the planner block being prepped
+st_block_t *st_prep_block; // Pointer to the stepper block data being prepped
+st_prep_t prep;            // Contains all the necessary information to compute new segments based on the current executing planner block.
+```
+
 [TODO]
 
 #### 3.2.2. Changes to the stepper driver interrupt handler (workflow step 7)
@@ -65,6 +87,12 @@ The realtime execution system continously calls `st_prep_buffer()` to be sure th
 The HAL raises an interrupt to generate stepper pulses with precise timing. The IRQ is handled by `stepper_driver_interrupt_handler()`; 
 it pops pre-computed segments from the step segment buffer and then executes them by pulsing the stepper pins appropriately.
 Currently the interrupt handler contains the last part of the Bresenham and Adaptive Multi-Axis Step Smoothing (AMASS) algorithms.
+It relies both on `sys` (core state machine system) and `hal` to produce changes on the following variables:
+
+```c
+stepper_t st; // Contains the running data for the main stepper ISR.
+```
+
 [TODO]
 
 ### 3.3. Other changes
@@ -73,4 +101,4 @@ Currently the interrupt handler contains the last part of the Bresenham and Adap
 
 ## 4. Notes
 
-For more info have a look at the [original discussion](https://github.com/grblHAL/core/discussions/34).
+[TODO]
