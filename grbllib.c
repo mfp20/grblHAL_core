@@ -134,11 +134,10 @@ int grbl_enter (void)
 
     // Clear all and set some Motion function pointers
     memset(&motion, 0, sizeof(grbl_motion_t));
-#if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
-    motion.protocol_execute_motion_data = st_push_segment;
-#else
-    motion.protocol_execute_motion_data = execute_gcode;
-#endif
+    if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
+        motion.protocol_execute_motion_data = st_push_segment;
+    else
+        motion.protocol_execute_motion_data = execute_gcode;
 
     sys.cold_start = true;
 
