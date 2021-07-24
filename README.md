@@ -54,33 +54,33 @@ Current input and motion computation goes as follow:
 7. the stepper driver interrupt pops pre-computed segments from the step segment buffer and executes them by pulsing the stepper pins
 
 The motion planner recomputes all block velocities each time a new block is added, so every block in buffer can change in time. Then the stepper pops the first block in queue to make segments.
-To avoid clashes between the motion planner recalculating all blocks in buffer and the motion stepper popping the blocks, each time the stepper starts a new block it will 'check out' the block, making the planner unable to modify it again.
-When the stepper finishes one block, it sets the block as finished so the planner can re-use the same memory location in its circular buffer. 
+To avoid clashes between the motion planner recalculating all blocks in buffer and the motion stepper popping the blocks, each time the stepper starts a new block it will 'check out' the block, 
+making the planner unable to modify it again. When the stepper finishes one block, it sets the block as finished so the planner can re-use the same memory location in its circular buffer. 
 Note: blocks aren't really popped/pushed as it is a circular buffer and its elements are reused.
 
 Points 3-6 are most of the computational heavy lifting; a very little more computing happens in the interrupt handler (step 7).
 
 At point 3 the g-code input of the pipeline is very small (just a few bytes of text), optimal for transmition on a communication interface (ex: usb to host) or multithread-safe queue (to core).
-Each g-code can produce multiple lines, each line multiple blocks, each block multiple segments, and each segment is made of many motor steps. At point 6 the g-code has been translated in steps and counts many bytes of binary data added to the segments buffer.
-If motion offloading is selected, the same steps 3 to 7 run on mcu's second core or on external host.
-Steps 2, 6 and 7 are slightly changed in order to implement the new architecture.
+Each g-code can produce multiple lines, each line multiple blocks, each block multiple segments, and each segment is made of many motor steps. 
+At point 6 the g-code has been translated in steps and counts many bytes of binary data added to the segments buffer.
+If motion offloading is selected, the same steps 3 to 7 run on mcu's second core or on external host. Steps 2, 6 and 7 are slightly changed in order to implement the new architecture.
 
 Currently changes are implemented using some defines in config.h, so the offloading is set at compile time to produce an experimental build. 
 But the final version might be able to set offloading at runtime (ex: on boot).
 
 ### 4.1. Overall changes
 
-Current buffers (planner blocks and stepper segments) are reduced in size so that some RAM is made available for a new `stepper_t` buffer.
-All calls to `sys` and `hal` need to be adapted for deferred execution. In particular the motion calculator can't rely on realtime parameters
-as the execution of computed blocks is deferred. Whatever realtime parameters need to be set in `stepper_t` at the very last moment before going live.
+In offloaded mode planner buffer is reduced in size so that some RAM is made available for an increased segment buffer and a new `stepper_t` buffer.
+All calls to `sys` and `hal` need to be adapted for deferred execution. In particular whatever realtime parameters need to be set,
+it has to be set in `stepper_t` at the very last moment before going live.
 
 [TODO]
-* select which calls to `sys` and `hal` in current code must be at motion computing, and which ones must be at execution time instead.
+* select which calls to `sys` and `hal` in current code must be set at motion computing, and which ones must be set at execution time instead.
 
 ### 4.2. Changes to protocol.c (workflow step 2)
 
-The `protocol_main_loop()` receives motion commands and handle them to `execute_gcode()` (gcodes).
-So we introduce a new method `execute_steps()` able to push steps in the new `stepper_t` buffer, effectively bypassing all the motion pipeline.
+The `protocol_main_loop()` receives motion commands and handle them to `execute_gcode()` (in gcode.c).
+So we introduced a new method `execute_steps()` (in stepper.c) able to push steps in the (new) `stepper_t` buffer, effectively bypassing all the motion pipeline.
 
 Steps pushed via this new method must be ready for direct execution without further manipulation. This implies the need to customize the stepper.
 
@@ -89,27 +89,29 @@ Steps pushed via this new method must be ready for direct execution without furt
 #### 4.3.1. st_prep_segment_buffer()
 
 The realtime execution system continously calls `st_prep_segment_buffer()` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
-We add a new method `st_switch()`: it eventually switches current `stepper_t` with next to go live. On switch sets realtime parameters into the new `stepper_t`.
-In normal mode `st_prep_segment_buffer()` fills segment buffer, then call `st_switch()` to complete its own job prepping the next live `stepper_t`.
-When the offloading is selected, the motion core runs `st_prep_segment_buffer()` (without calling `st_switch()`), and grbl-core runs `st_prep_segment_buffer()` calling `st_switch()` only.
+In normal mode `st_prep_segment_buffer()` fills segment buffer only.
+When the offloading mode is selected, the motion core runs `st_prep_segment_buffer(true, false)`,  and grbl-core runs `st_prep_segment_buffer(false, true)`.
 
 [TODO]
 * select which calls in current code must be `st_prep_segment_buffer(true, false)` (ie: refill only), and which ones must be `st_prep_segment_buffer(false, true)` (ie: switch only)
 
 #### 4.3.2. Changes to the stepper driver interrupt handler
 
-The HAL raises an interrupt to generate stepper pulses with precise timing. The IRQ is handled by `stepper_driver_interrupt_handler()`; 
-it pops pre-computed segments from the step segment buffer and then executes them by pulsing the stepper pins appropriately.
-Currently the interrupt handler executes the last part of the Bresenham and Adaptive Multi-Axis Step Smoothing (AMASS) algorithms.
-This implies this code must be offloaded togheter with the planner and the stepper.
-
-This variable holds the running data
+The HAL raises an interrupt to generate stepper pulses with precise timing. The IRQ is handled by `st_interrupt_handler()`. 
+We added the steps buffer
 
 ```c
-static stepper_t st; // Contains the running data for the main stepper ISR.
+static stepper_t steps_buffer[STEPS_BUFFER_SIZE];
 ```
 
-and it is doubled/tripled/quadrupled in order to be the stepper buffer we need. `st_switch()` must keep this buffer full.
+Then we turned the old variable into a pointer to currently running steps data
+
+```c
+static stepper_t *st;
+```
+
+We add also a new method `st_prep_steps_buffer()`: executes the last part of the Bresenham and Adaptive Multi-Axis Step Smoothing (AMASS) algorithms and keeps the (new) `stepper_t` buffer full.
+The code is mostly the same of the old interrupt handler (revisited to skip `sys` and `hal` calls).
 
 ### 4.4. Other minor changes
 

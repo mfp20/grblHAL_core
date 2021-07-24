@@ -74,8 +74,11 @@ static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE - 1];
 // the planner, where the remaining planner block steps still can.
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
-// Stepper ISR data struct. Contains the running data for the main stepper ISR.
-static stepper_t st;
+// Stepper ISR data buffer.
+static stepper_t steps_buffer[STEPS_BUFFER_SIZE];
+
+// Stepper ISR data pointer to the running data.
+static stepper_t *st;
 
 #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
 typedef struct {
@@ -282,16 +285,15 @@ ISR_CODE void st_go_idle ()
    NOTE: This interrupt must be as efficient as possible and complete before the next ISR tick,
    which for Grbl must be less than 33.3usec (@30kHz ISR rate). Oscilloscope measured time in
    ISR is 5usec typical and 25usec maximum, well below requirement.
+
    NOTE: This ISR expects at least one step to be executed per segment.
+
+   NOTE:  In monolithic mode ... . In offload mode ...
 */
 
 //! \cond
 
-ISR_CODE void stepper_driver_interrupt_handler_deferred (void)
-{
-}
-
-ISR_CODE void stepper_driver_interrupt_handler (void)
+ISR_CODE void st_prep_steps_buffer (void)
 {
 #ifdef ENABLE_BACKLASH_COMPENSATION
     static bool backlash_motion;
@@ -541,6 +543,15 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 
 //! \endcond
 
+//
+ISR_CODE void st_interrupt_handler (void)
+{
+    if (!(BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)) {
+        st_prep_steps_buffer();
+    }
+    // TODO
+}
+
 // Reset and clear stepper subsystem variables
 void st_reset ()
 {
@@ -661,10 +672,10 @@ void st_parking_restore_buffer()
    Currently, the segment buffer conservatively holds roughly up to 40-50 msec of steps.
    NOTE: Computation units are in steps, millimeters, and minutes.
 */
-void st_prep_segment_buffer(bool refill, bool switcher)
+void st_prep_segment_buffer(bool refill, bool steps)
 {
     if (refill) {
-        // TODO evaluate all sys.* calls and move realtime ones to st_switch()
+        // TODO evaluate all sys.* calls and move realtime ones to st_interrupt_handler()
 
         // Block step prep buffer, while in a suspend state and there is no suspend motion to execute.
         if (sys.step_control.end_motion)
@@ -1086,13 +1097,10 @@ void st_prep_segment_buffer(bool refill, bool switcher)
             }
         }
     }
-    if (switcher) {
-        st_switch();
+    if (steps) {
+        st_prep_steps_buffer();
     }
 }
-
-// Called by st_prep_segment_buffer().
-void st_switch(void) {}
 
 
 // Called by realtime status reporting to fetch the current speed being executed. This value

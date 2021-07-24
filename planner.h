@@ -28,14 +28,15 @@
 #define BLOCK_BUFFER_SIZE 36
 #endif
 
-#ifndef BLOCK_BUFFER_SIZE_DEFERRED
-#define BLOCK_BUFFER_SIZE_DEFERRED (BLOCK_BUFFER_SIZE/2)
+// in the case of offloaded mode we reduce this buffer to have spare RAM
+#if (BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)
+#ifndef BLOCK_BUFFER_SIZE_OFFLOADED
+#define BLOCK_BUFFER_SIZE_OFFLOADED (BLOCK_BUFFER_SIZE/4)
+#endif
+#undef BLOCK_BUFFER_SIZE
+#define BLOCK_BUFFER_SIZE BLOCK_BUFFER_SIZE_OFFLOADED
 #endif
 
-#if (BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)
-#undef BLOCK_BUFFER_SIZE
-#define BLOCK_BUFFER_SIZE BLOCK_BUFFER_SIZE_DEFERRED
-#endif
 
 typedef union {
     uint32_t value;
@@ -54,6 +55,7 @@ typedef union {
         coolant_state_t coolant;
     };
 } planner_cond_t;
+
 
 // This struct stores a linear movement of a g-code block motion with its critical "nominal" values
 // are as specified in the source g-code.
@@ -114,6 +116,7 @@ typedef struct {
   float previous_unit_vec[N_AXIS];  // Unit vector of previous path line segment
   float previous_nominal_speed;     // Nominal speed of previous path line segment
 } planner_t;
+
 
 // Initialize and reset the motion plan subsystem
 void plan_reset(); // Reset all

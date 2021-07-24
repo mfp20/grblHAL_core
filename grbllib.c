@@ -128,7 +128,7 @@ int grbl_enter (void)
     hal.stream.enqueue_realtime_command = protocol_enqueue_realtime_command;
     hal.limits.interrupt_callback = limit_interrupt_handler;
     hal.control.interrupt_callback = control_interrupt_handler;
-    hal.stepper.interrupt_callback = stepper_driver_interrupt_handler;
+    hal.stepper.interrupt_callback = st_interrupt_handler;
     hal.stream_blocking_callback = stream_tx_blocking;
     hal.signals_cap.reset = hal.signals_cap.feed_hold = hal.signals_cap.cycle_start = On;
 

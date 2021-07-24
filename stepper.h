@@ -30,13 +30,18 @@
 #define SEGMENT_BUFFER_SIZE 10
 #endif
 
-#ifndef SEGMENT_BUFFER_SIZE_DEFERRED
-#define SEGMENT_BUFFER_SIZE_DEFERRED (SEGMENT_BUFFER_SIZE/2)
+#ifndef STEPS_BUFFER_SIZE
+#define STEPS_BUFFER_SIZE 1
 #endif
 
+// in the case of offloaded mode we make both segment and steps buffers bigger
 #if (BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)
+// we use here half of the memory spared by the planner block buffer
 #undef SEGMENT_BUFFER_SIZE
-#define SEGMENT_BUFFER_SIZE SEGMENT_BUFFER_SIZE_DEFERRED
+#define SEGMENT_BUFFER_SIZE (((sizeof(plan_block_t)*BLOCK_BUFFER_SIZE*2)/(sizeof(st_block_t)+sizeof(segment_t)))+10)
+// we use here the second half of the memory spared by the planner block buffer
+#undef STEPS_BUFFER_SIZE
+#define STEPS_BUFFER_SIZE ((sizeof(plan_block_t)*BLOCK_BUFFER_SIZE*2)/sizeof(stepper_t))
 #endif
 
 typedef enum {
@@ -144,10 +149,7 @@ void st_parking_setup_buffer();
 void st_parking_restore_buffer();
 
 // Reloads step segment buffer. Called continuously by realtime execution system.
-void st_prep_segment_buffer(bool refill, bool switcher);
-
-// Eventually switches current stepper_t with next to go live. On switch sets realtime parameters into the new stepper_t.
-void st_switch(void);
+void st_prep_segment_buffer(bool refill, bool steps);
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters();
@@ -155,7 +157,10 @@ void st_update_plan_block_parameters();
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
 float st_get_realtime_rate();
 
-// pops pre-computed segments from the step segment buffer and then executes
-void stepper_driver_interrupt_handler (void);
+// prepare pre-computed segments and place them in steps buffer
+void st_prep_steps_buffer(void);
+
+// manages the steps buffer according to current configuration and realtime information
+void st_interrupt_handler(void);
 
 #endif
