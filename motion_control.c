@@ -727,7 +727,7 @@ status_code_t mc_jog_execute (plan_line_data_t *pl_data, parser_block_t *gc_bloc
     sys_state_t state = state_get();
     if ((state == STATE_IDLE || state == STATE_TOOL_CHANGE) && plan_get_current_block() != NULL) { // Check if there is a block to execute.
         state_set(STATE_JOG);
-        st_prep_buffer();
+        st_prep_segment_buffer(true, false);
         st_wake_up();  // NOTE: Manual start. No state machine required.
     }
 
@@ -937,7 +937,7 @@ bool mc_parking_motion (float *parking_target, plan_line_data_t *pl_data)
         sys.step_control.execute_sys_motion = On;
         sys.step_control.end_motion = Off;  // Allow parking motion to execute, if feed hold is active.
         st_parking_setup_buffer();          // Setup step segment buffer for special parking motion case.
-        st_prep_buffer();
+        st_prep_segment_buffer(true, false);
         st_wake_up();
     }
 

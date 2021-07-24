@@ -60,7 +60,7 @@ grbl_motion_t motion;
 
 static bool stream_tx_blocking (void)
 {
-    // TODO: Restructure st_prep_buffer() calls to be executed here during a long print.
+    // TODO: Restructure st_prep_segment_buffer() calls to be executed here during a long print.
 
     grbl.on_execute_realtime(state_get());
 
@@ -135,7 +135,7 @@ int grbl_enter (void)
     // Clear all and set some Motion function pointers
     memset(&motion, 0, sizeof(grbl_motion_t));
     if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
-        motion.protocol_execute_motion_data = st_push_segment;
+        motion.protocol_execute_motion_data = execute_steps;
     else
         motion.protocol_execute_motion_data = execute_gcode;
 

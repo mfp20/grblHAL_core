@@ -179,12 +179,12 @@ static bool limits_pull_off (axes_signals_t axis, float distance)
     sys.step_control.execute_sys_motion = On;   // set to execute homing motion.
     sys.homing_axis_lock.mask = axis.mask;
 
-    st_prep_buffer();   // Prep and fill segment buffer from newly planned block.
+    st_prep_segment_buffer(true, false);   // Prep and fill segment buffer from newly planned block.
     st_wake_up();       // Initiate motion.
 
     while(true) {
 
-        st_prep_buffer(); // Check and prep segment buffer.
+        st_prep_segment_buffer(true, false); // Check and prep segment buffer.
 
         // Exit routines: No time to run protocol_execute_realtime() in this loop.
         if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_COMPLETE)) {
@@ -321,7 +321,7 @@ static bool limits_homing_cycle (axes_signals_t cycle, axes_signals_t auto_squar
 
         sys.step_control.flags = 0;
         sys.step_control.execute_sys_motion = On; // Set to execute homing motion and clear existing flags.
-        st_prep_buffer();   // Prep and fill segment buffer from newly planned block.
+        st_prep_segment_buffer(true, false);   // Prep and fill segment buffer from newly planned block.
         st_wake_up();       // Initiate motion
 
         do {
@@ -365,7 +365,7 @@ static bool limits_homing_cycle (axes_signals_t cycle, axes_signals_t auto_squar
                 }
             }
 
-            st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+            st_prep_segment_buffer(true, false); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
             // Exit routines: No time to run protocol_execute_realtime() in this loop.
             if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_COMPLETE)) {

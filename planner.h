@@ -28,6 +28,15 @@
 #define BLOCK_BUFFER_SIZE 36
 #endif
 
+#ifndef BLOCK_BUFFER_SIZE_DEFERRED
+#define BLOCK_BUFFER_SIZE_DEFERRED (BLOCK_BUFFER_SIZE/2)
+#endif
+
+#if (BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)
+#undef BLOCK_BUFFER_SIZE
+#define BLOCK_BUFFER_SIZE BLOCK_BUFFER_SIZE_DEFERRED
+#endif
+
 typedef union {
     uint32_t value;
     struct {

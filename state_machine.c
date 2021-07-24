@@ -161,7 +161,7 @@ void state_set (sys_state_t new_state)
                     if ((block = plan_get_current_block())) {
                         sys_state = new_state;
                         sys.steppers_deenergize = false;    // Cancel stepper deenergize if pending.
-                        st_prep_buffer();                   // Initialize step segment buffer before beginning cycle.
+                        st_prep_segment_buffer(true, false);                   // Initialize step segment buffer before beginning cycle.
                         if(block->condition.spindle.synchronized) {
 
                             if(hal.spindle.reset_data)

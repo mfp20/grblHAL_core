@@ -30,6 +30,15 @@
 #define SEGMENT_BUFFER_SIZE 10
 #endif
 
+#ifndef SEGMENT_BUFFER_SIZE_DEFERRED
+#define SEGMENT_BUFFER_SIZE_DEFERRED (SEGMENT_BUFFER_SIZE/2)
+#endif
+
+#if (BOARD_OFFLOAD_TO_CORE || BOARD_OFFLOAD_TO_HOST)
+#undef SEGMENT_BUFFER_SIZE
+#define SEGMENT_BUFFER_SIZE SEGMENT_BUFFER_SIZE_DEFERRED
+#endif
+
 typedef enum {
     SquaringMode_Both = 0,  //!< 0
     SquaringMode_A,         //!< 1
@@ -113,6 +122,9 @@ typedef struct stepper {
 // Initialize and setup the stepper motor subsystem
 void stepper_init();
 
+// receives one line from serial stream and stores 1 stepper_t
+status_code_t execute_steps (char *segment, char *message);
+
 // Enable steppers, but cycle does not start unless called by motion control or realtime command.
 void st_wake_up();
 
@@ -132,16 +144,16 @@ void st_parking_setup_buffer();
 void st_parking_restore_buffer();
 
 // Reloads step segment buffer. Called continuously by realtime execution system.
-void st_prep_buffer();
+void st_prep_segment_buffer(bool refill, bool switcher);
+
+// Eventually switches current stepper_t with next to go live. On switch sets realtime parameters into the new stepper_t.
+void st_switch(void);
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters();
 
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
 float st_get_realtime_rate();
-
-// receives one line from serial stream and stores 1 segment in segment buffer 
-status_code_t st_push_segment (char *segment, char *message);
 
 // pops pre-computed segments from the step segment buffer and then executes
 void stepper_driver_interrupt_handler (void);

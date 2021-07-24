@@ -52,7 +52,7 @@ typedef struct {
     /*! \brief Execute one motion block (gcode or raw steps).
 
     For single core boards without host offloading it is set to execute_gcode().
-    On multicore boards or offloading motion to host, it is set to st_push_segment().
+    On multicore boards or offloading motion to host, it is set to execute_steps().
     \returns current parser status.
     */
     status_code_t (*protocol_execute_motion_data)(char *block, char *message);
