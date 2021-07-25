@@ -161,6 +161,6 @@ float st_get_realtime_rate();
 void st_prep_steps_buffer(void);
 
 // manages the steps buffer according to current configuration and realtime information
-void st_interrupt_handler(void);
+void st_exec_interrupt_handler(void);
 
 #endif

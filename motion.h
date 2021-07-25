@@ -1,7 +1,7 @@
 /*
-  motion.h - General motion structures
+  motion.h - General motion structures and methods
 
-  Part of grblHAL
+  (Wannabe) Part of grblHAL
 
   Copyright (c) 2021 Anichang
 
@@ -20,7 +20,7 @@
 */
 
 /*! \file
-    \brief General motion structures.
+    \brief General motion structures and methods.
 */
 
 #ifndef _MOTION_H_
@@ -51,13 +51,15 @@
 typedef struct {
     /*! \brief Execute one motion block (gcode or raw steps).
 
-    For single core boards without host offloading it is set to execute_gcode().
-    On multicore boards or offloading motion to host, it is set to execute_steps().
+    For single or multicore boards without host offloading it is set to execute_gcode().
+    When offloading motion to external host, it is set to execute_steps().
     \returns current parser status.
     */
     status_code_t (*protocol_execute_motion_data)(char *block, char *message);
 } grbl_motion_t;
 
 extern grbl_motion_t motion; //!< Global Motion struct.
+
+void motion_computing_main(void);
 
 #endif

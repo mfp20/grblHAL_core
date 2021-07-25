@@ -373,12 +373,22 @@ static status_code_t init_sync_motion (plan_line_data_t *pl_data, float pitch)
     return Status_OK;
 }
 
+// runs gc_execute_block() locally or dispatches to second core
+// Note: this is the motion pipeline's entry point for gcodes
+status_code_t execute_gcode(char *block, char *message) {
+    if (BOARD_OFFLOAD_TO_CORE) { // execute on second mcu core
+        // TODO send gcode and wait for return status_code_t
+    } else { // local execution
+        return gc_execute_block(block, message);
+    }
+}
+
 // Executes one block (line) of 0-terminated G-Code. The block is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace). Comments and block delete
 // characters have been removed. In this function, all units and positions are converted and
 // exported to grbl's internal functions in terms of (mm, mm/min) and absolute machine
 // coordinates, respectively.
-status_code_t execute_gcode(char *block, char *message)
+status_code_t gc_execute_block(char *block, char *message)
 {
     static const parameter_words_t axis_words_mask = {
         .x = On,

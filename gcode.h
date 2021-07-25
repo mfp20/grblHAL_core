@@ -534,8 +534,11 @@ typedef struct {
 // Initialize the parser
 void gc_init (void);
 
+// runs gc_execute_block() locally or dispatches to second core
+status_code_t execute_gcode(char *block, char *message);
+
 // Execute one block of rs275/ngc/g-code
-status_code_t execute_gcode (char *block, char *message);
+status_code_t gc_execute_block (char *block, char *message);
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort and hard
 // limit pull-off routines.
