@@ -681,7 +681,7 @@ typedef struct {
 
     // multicore
 
-    /*! \brief Pushes motion data into the remoting queue.
+    /*! \brief Pushes new gcode into the remoting queue.
 
     It pushes one gcode line to remote motion computing core and waits for return status_code_t.
     Ignored in monolithic mode.
@@ -689,8 +689,9 @@ typedef struct {
     */
     status_code_t (*push_motion_data)(char *block, char *message);
 
-    /*! \brief Pops motion data from the remoting queue.
+    /*! \brief Pops new gcode from the remoting queue.
 
+    Pops one gcode line from remote motion computing core and write it to *block and *message.
     Ignored in monolithic mode.
     \returns success/fail.
     */

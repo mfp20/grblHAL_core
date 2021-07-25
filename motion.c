@@ -36,6 +36,6 @@ void motion_computing_main(void) {
         if (hal.pop_motion_data(block, message))
             execute_gcode(char *block, char *message);
         // prep segment and steps buffers
-        st_prep_segment_buffer(true, true);
+        st_prep_segment_buffer(false, true);
     }
 }

@@ -131,6 +131,14 @@ int grbl_enter (void)
     hal.stepper.interrupt_callback = st_exec_interrupt_handler;
     hal.stream_blocking_callback = stream_tx_blocking;
     hal.signals_cap.reset = hal.signals_cap.feed_hold = hal.signals_cap.cycle_start = On;
+    if (BOARD_OFFLOAD_TO_CORE) {
+        hal.push_motion_data = push_motion_data;
+        hal.pop_motion_data = pop_motion_data;
+    }
+    if (BOARD_OFFLOAD_GRBL_CORE) {
+        hal.push_motion_data = push_motion_data;
+        hal.pop_motion_data = pop_motion_data;
+    }
 
     // Clear all and set some Motion function pointers
     memset(&motion, 0, sizeof(grbl_motion_t));

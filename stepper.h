@@ -127,8 +127,8 @@ typedef struct stepper {
 // Initialize and setup the stepper motor subsystem
 void stepper_init();
 
-// receives one line from serial stream and stores 1 stepper_t
-status_code_t execute_steps (char *segment, char *message);
+// in offloaded mode it receives one line from serial stream and stores 1 stepper_t
+status_code_t execute_steps (char *steps, char *message);
 
 // Enable steppers, but cycle does not start unless called by motion control or realtime command.
 void st_wake_up();

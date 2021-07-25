@@ -180,8 +180,8 @@ static st_prep_t prep;
 
 //
 
-// receives one line from serial stream and stores 1 stepper_t
-status_code_t execute_steps (char *segment, char *message) {
+// in offloaded mode it receives one line from serial stream and stores 1 stepper_t
+status_code_t execute_steps (char *steps, char *message) {
     // TODO 
 }
 

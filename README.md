@@ -37,8 +37,8 @@ At the same time there's the need to add some extra sync information to critical
 ## 3. Roadmap
 
 The roadmap follow the use cases picture:
-1. abstract motion computation from grbl core
-2. define the proper format to "communicate" segments on the serial console
+1. abstract motion computation from grbl core (to move motion computing to mcu's second core)
+2. define the format to transmit steps and control messages ('sys' and 'hal' calls) on the serial console (to move motion computing to the remote host)
 3. introduce concurrency control elements to make hal and core being able to run on different mcu cores
 4. introduce syncing variables in core structures and whatever syncing method needed
 
@@ -60,7 +60,7 @@ Note: blocks aren't really popped/pushed as it is a circular buffer and its elem
 
 Points 3-6 are most of the computational heavy lifting; a very little more computing happens in the interrupt handler (step 7).
 
-At point 3 the g-code input of the pipeline is very small (just a few bytes of text), optimal for transmition on a communication interface (ex: usb to host) or multithread-safe queue (to core).
+At point 3 the g-code input of the pipeline is very small (just a few bytes of text), optimal for transmition on a communication interface (ex: usb to host) or multithread-safe queue (to another mcu core).
 Each g-code can produce multiple lines, each line multiple blocks, each block multiple segments, and each segment is made of many motor steps. 
 At point 6 the g-code has been translated in steps and counts many bytes of binary data added to the segments buffer.
 If motion offloading is selected, the same steps 3 to 7 run on mcu's second core or on external host. Steps 2, 6 and 7 are slightly changed in order to implement the new architecture.
@@ -70,7 +70,7 @@ But the final version might be able to set offloading at runtime (ex: on boot).
 
 ### 4.1. General changes
 
-In `grbl_hal_t` gets
+`grbl_hal_t` gets
 
 ```c
 status_code_t (*push_motion_data)(char *block, char *message);
@@ -78,7 +78,7 @@ bool (*pop_motion_data)(char *block, char *message);
 ```
 
 We add `motion.{h|c}` to host general motion computing structures and methods. In particular
-- `struct grbl_motion_t`: global motion struct; protocol_execute_motion_data is the method protocol calls to dispatch a motion input line.
+- `struct grbl_motion_t`: global motion struct; `protocol_execute_motion_data` is the function pointer the protocol calls in order to dispatch a motion input line.
 - `motion_computing_main()`: to be run on dedicated core or external host. It receives new gcodes (if any), then keeps the buffers full until all planner bocks are checked out.
 
 In offloaded mode planner buffer is reduced in size so that some RAM is made available for an increased segment buffer and a new `stepper_t` buffer.
@@ -92,16 +92,16 @@ are set in `static stepper_t *st` instead, at the very last moment before going 
 
 ### 4.2. Changes to protocol.c (workflow step 2)
 
-The `protocol_main_loop()` receives motion commands and handle them to `protocol_execute_motion_data()`.
+The `protocol_main_loop()` receives motion commands and handles them to `protocol_execute_motion_data()`.
 
 We add `execute_gcode()` (in gcode.c) as the motion pipeline's entry point for gcodes.
 
-In monolithic mode grbllib sets `protocol_execute_motion_data` to `execute_gcode()`.
-In turn it handles the new gcode to `gc_execute_block()` for local motion computing.
+In monolithic mode and offloaded-to-core mode, grbllib sets `protocol_execute_motion_data` to `execute_gcode()`.
+In turn it handles the new gcode to `gc_execute_block()` for local motion computing or `hal.push_motion_data()` for execution on the other core.
 
-In offloaded mode grbllib sets `protocol_execute_motion_data` to:
-* BOARD_OFFLOAD_TO_CORE: `execute_gcode()` for gcodes dispatching to second core.
-* BOARD_OFFLOAD_TO_HOST: `execute_steps()` (from stepper.c).
+In offloaded-to-host mode grbllib sets `protocol_execute_motion_data` to `execute_steps()` (from stepper.c).
+
+[TODO]
 
 ### 4.3. Changes to stepper.c (workflow step 6 and 7)
 
@@ -114,13 +114,19 @@ We added the steps buffer
 static stepper_t steps_buffer[STEPS_BUFFER_SIZE];
 ```
 
+As we reduce the planner buffer size, STEPS_BUFFER_SIZE is defined as "half of the memory not used by the planner block buffer".
+The other half is used to increase the segment buffer size.
+
 Then we turned the old variable into a pointer to currently running steps data
 
 ```c
 static stepper_t *st;
 ```
 
+The interrupt handler manages the pointer in order to execute the right steps_buffer element.
+
 [TODO]
+* write `execute_steps()`
 
 #### 4.3.1. st_prep_segment_buffer()
 
@@ -128,7 +134,7 @@ The realtime execution system continously calls `st_prep_segment_buffer()` to be
 
 In monolithic mode `st_prep_segment_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
 
-When the offloading mode is selected, the motion core runs `st_prep_segment_buffer(true, true)` to (re)fill the steps buffer as well.
+When the offloading mode is selected, the motion core runs `st_prep_segment_buffer(false, true)` to (re)fill the steps buffer instead.
 
 [TODO]
 * in offloaded mode st_prep_segment_buffer() must not be called by grbl core because it continously runs in dedicated mcu core or external host
