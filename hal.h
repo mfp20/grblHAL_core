@@ -697,6 +697,22 @@ typedef struct {
     */
     bool (*pop_motion_data)(char *block, char *message);
 
+    /*! \brief Pushes 'count' bytes from argv to mcu core running grbl core.
+
+    In offloading grbl core mode, it handles bytes from I/O device to grbl core.
+    Ignored in monolithic mode.
+    \returns current parser status.
+    */
+    bool (*push_core_data)(int argc, char *argv[]);
+
+    /*! \brief Pops 'count' bytes from mcu core running grbl core to argv.
+
+    In offloading grbl core mode, it handles bytes from grbl core to I/O device.
+    Ignored in monolithic mode.
+    \returns success/fail.
+    */
+    bool (*pop_core_data)(int argc, char *argv[]);
+
 } grbl_hal_t;
 
 extern grbl_hal_t hal; //!< Global HAL struct.

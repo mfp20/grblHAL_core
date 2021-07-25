@@ -680,7 +680,7 @@ bool protocol_exec_rt_system (void)
 
     // Reload step segment buffer
     if (state_get() & (STATE_CYCLE | STATE_HOLD | STATE_SAFETY_DOOR | STATE_HOMING | STATE_SLEEP| STATE_JOG))
-        st_prep_segment_buffer(true, false);
+        st_prep_segment_buffer(!(BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE), false);
 
     return !ABORTED;
 }

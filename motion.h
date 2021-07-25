@@ -60,6 +60,7 @@ typedef struct {
 
 extern grbl_motion_t motion; //!< Global Motion struct.
 
-void motion_computing_main(void);
+// executes the motion computing pipeline; can run on mcu core or on external host
+void motion_computing_loop(void);
 
 #endif

@@ -42,7 +42,7 @@ The roadmap follow the use cases picture:
 3. introduce concurrency control elements to make hal and core being able to run on different mcu cores
 4. introduce syncing variables in core structures and whatever syncing method needed
 
-## 4. Workflow
+## 4. Vanilla workflow
 
 Current input and motion computation goes as follow:
 1. main loop identifies lines incoming on the serial console, clean up and capitalize,
@@ -79,7 +79,7 @@ bool (*pop_motion_data)(char *block, char *message);
 
 We add `motion.{h|c}` to host general motion computing structures and methods. In particular
 - `struct grbl_motion_t`: global motion struct; `protocol_execute_motion_data` is the function pointer the protocol calls in order to dispatch a motion input line.
-- `motion_computing_main()`: to be run on dedicated core or external host. It receives new gcodes (if any), then keeps the buffers full until all planner bocks are checked out.
+- `motion_computing_loop()`: to be run on dedicated core or external host. It receives new gcodes (if any), then keeps the buffers full until all planner bocks are checked out.
 
 In offloaded mode planner buffer is reduced in size so that some RAM is made available for an increased segment buffer and a new `stepper_t` buffer.
 
@@ -130,14 +130,13 @@ The interrupt handler manages the pointer in order to execute the right steps_bu
 
 #### 4.3.1. st_prep_segment_buffer()
 
-The realtime execution system continously calls `st_prep_segment_buffer()` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
+The realtime execution system continously calls `st_prep_segment_buffer(true, false)` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
 
 In monolithic mode `st_prep_segment_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
 
 When the offloading mode is selected, the motion core runs `st_prep_segment_buffer(false, true)` to (re)fill the steps buffer instead.
 
 [TODO]
-* in offloaded mode st_prep_segment_buffer() must not be called by grbl core because it continously runs in dedicated mcu core or external host
 
 #### 4.3.2. Changes to the stepper driver interrupt handler
 

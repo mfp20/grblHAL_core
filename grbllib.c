@@ -136,13 +136,13 @@ int grbl_enter (void)
         hal.pop_motion_data = pop_motion_data;
     }
     if (BOARD_OFFLOAD_GRBL_CORE) {
-        hal.push_motion_data = push_motion_data;
-        hal.pop_motion_data = pop_motion_data;
+        hal.push_core_data = push_core_data;
+        hal.pop_core_data = pop_core_data;
     }
 
     // Clear all and set some Motion function pointers
     memset(&motion, 0, sizeof(grbl_motion_t));
-    if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE)
+    if (BOARD_OFFLOAD_TO_HOST)
         motion.protocol_execute_motion_data = execute_steps;
     else
         motion.protocol_execute_motion_data = execute_gcode;

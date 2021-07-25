@@ -21,6 +21,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "grbl.h"
+#include "motion.h"
 #include "planner.h"
 
 #ifndef _STEPPER_H_
@@ -41,7 +43,7 @@
 #define SEGMENT_BUFFER_SIZE (((sizeof(plan_block_t)*BLOCK_BUFFER_SIZE*2)/(sizeof(st_block_t)+sizeof(segment_t)))+10)
 // we use here the second half of the memory spared by the planner block buffer
 #undef STEPS_BUFFER_SIZE
-#define STEPS_BUFFER_SIZE ((sizeof(plan_block_t)*BLOCK_BUFFER_SIZE*2)/sizeof(stepper_t))
+#define STEPS_BUFFER_SIZE (((sizeof(plan_block_t)*BLOCK_BUFFER_SIZE*2)/sizeof(stepper_t))+1)
 #endif
 
 typedef enum {

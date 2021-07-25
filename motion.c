@@ -27,11 +27,12 @@
 #include "gcode.h"
 #include "stepper.h"
 
-void motion_computing_main(void) {
+void motion_computing_loop(void) {
+    bool running = true;
     char *block;
     char *message;
 
-    while (1) {
+    while (running) {
         // get new block if any (non-blocking queue read)
         if (hal.pop_motion_data(block, message))
             execute_gcode(char *block, char *message);
