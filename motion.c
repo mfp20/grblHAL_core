@@ -23,15 +23,19 @@
     \brief General motion structures and methods.
 */
 
-#include "motion.h"
+#include "hal.h"
 #include "gcode.h"
 #include "stepper.h"
 
 void motion_computing_main(void) {
-    // TODO
+    char *block;
+    char *message;
+
     while (1) {
         // get new block if any (non-blocking queue read)
-        // on new block run execute_gcode(char *block, char *message);
-        // st_prep_segment_buffer(true, true);
+        if (hal.pop_motion_data(block, message))
+            execute_gcode(char *block, char *message);
+        // prep segment and steps buffers
+        st_prep_segment_buffer(true, true);
     }
 }

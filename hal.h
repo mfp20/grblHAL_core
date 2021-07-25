@@ -679,6 +679,23 @@ typedef struct {
     driver_cap_t driver_cap;                //!< Basic driver capabilities flags.
     control_signals_t signals_cap;          //!< Control input signals supported by the core.
 
+    // multicore
+
+    /*! \brief Pushes motion data into the remoting queue.
+
+    It pushes one gcode line to remote motion computing core and waits for return status_code_t.
+    Ignored in monolithic mode.
+    \returns current parser status.
+    */
+    status_code_t (*push_motion_data)(char *block, char *message);
+
+    /*! \brief Pops motion data from the remoting queue.
+
+    Ignored in monolithic mode.
+    \returns success/fail.
+    */
+    bool (*pop_motion_data)(char *block, char *message);
+
 } grbl_hal_t;
 
 extern grbl_hal_t hal; //!< Global HAL struct.

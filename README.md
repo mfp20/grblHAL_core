@@ -70,17 +70,25 @@ But the final version might be able to set offloading at runtime (ex: on boot).
 
 ### 4.1. General changes
 
+In `grbl_hal_t` gets
+
+```c
+status_code_t (*push_motion_data)(char *block, char *message);
+bool (*pop_motion_data)(char *block, char *message);
+```
+
 We add `motion.{h|c}` to host general motion computing structures and methods. In particular
 - `struct grbl_motion_t`: global motion struct; protocol_execute_motion_data is the method protocol calls to dispatch a motion input line.
 - `motion_computing_main()`: to be run on dedicated core or external host. It receives new gcodes (if any), then keeps the buffers full until all planner bocks are checked out.
 
 In offloaded mode planner buffer is reduced in size so that some RAM is made available for an increased segment buffer and a new `stepper_t` buffer.
 
-All calls to `sys` and `hal` are moved and/or adapted for deferred execution. In particular whatever realtime parameters were set in planner block buffer and segment buffer prep,
+All calls to `sys` and `hal` in stepper.c are moved and/or adapted for deferred execution. In particular whatever realtime parameters were set in planner block buffer and segment buffer prep,
 are set in `static stepper_t *st` instead, at the very last moment before going live.
 
 [TODO]
 * select which calls to `sys` and `hal` in current code must be set at motion computing time, and which ones must be set at execution time instead.
+* be sure calls to `sys` and `hal` use single byte data only (ie: are atomic) to avoid concurrency issues, or introduce the needed syncing methods.
 
 ### 4.2. Changes to protocol.c (workflow step 2)
 
@@ -118,7 +126,7 @@ static stepper_t *st;
 
 The realtime execution system continously calls `st_prep_segment_buffer()` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
 
-In monolithic mode `st_prep_segment_buffer(true, false)` (re)fills segment buffer only as it used to do in old code.
+In monolithic mode `st_prep_segment_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
 
 When the offloading mode is selected, the motion core runs `st_prep_segment_buffer(true, true)` to (re)fill the steps buffer as well.
 

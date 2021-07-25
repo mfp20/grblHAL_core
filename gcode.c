@@ -374,10 +374,10 @@ static status_code_t init_sync_motion (plan_line_data_t *pl_data, float pitch)
 }
 
 // runs gc_execute_block() locally or dispatches to second core
-// Note: this is the motion pipeline's entry point for gcodes
 status_code_t execute_gcode(char *block, char *message) {
     if (BOARD_OFFLOAD_TO_CORE) { // execute on second mcu core
-        // TODO send gcode and wait for return status_code_t
+        // send gcode and wait for return status_code_t
+        return hal.push_motion_data(block, message);
     } else { // local execution
         return gc_execute_block(block, message);
     }
