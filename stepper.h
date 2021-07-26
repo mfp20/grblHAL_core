@@ -151,7 +151,7 @@ void st_parking_setup_buffer();
 void st_parking_restore_buffer();
 
 // Reloads step segment buffer. Called continuously by realtime execution system.
-void st_prep_segment_buffer(bool refill, bool steps);
+void st_prep_stepper_buffer(bool refill, bool steps);
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters();

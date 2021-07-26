@@ -182,7 +182,8 @@ static st_prep_t prep;
 
 // in offloaded mode it receives one line from serial stream and stores 1 stepper_t
 status_code_t execute_steps (char *steps, char *message) {
-    // TODO 
+    // TODO
+    return 0;
 }
 
 // Output message in sync with motion, called by foreground process.
@@ -588,7 +589,7 @@ void st_reset ()
     segment_next_head = segment_buffer_head->next;
 
     memset(&prep, 0, sizeof(st_prep_t));
-    memset(&st, 0, sizeof(stepper_t));
+    memset(st, 0, sizeof(stepper_t));
 
 #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     // TODO: move to driver?
@@ -603,7 +604,7 @@ void st_reset ()
 }
 
 // Called by spindle_set_state() to inform about RPM changes.
-// Used by st_prep_segment_buffer() to determine if spindle needs update when dynamic RPM is called for.
+// Used by st_prep_stepper_buffer() to determine if spindle needs update when dynamic RPM is called for.
 void st_rpm_changed (float rpm)
 {
     prep.current_spindle_rpm = rpm;
@@ -669,7 +670,7 @@ void st_parking_restore_buffer()
    Currently, the segment buffer conservatively holds roughly up to 40-50 msec of steps.
    NOTE: Computation units are in steps, millimeters, and minutes.
 */
-void st_prep_segment_buffer(bool refill, bool steps)
+void st_prep_stepper_buffer(bool refill, bool steps)
 {
     if (refill) {
         // TODO evaluate all sys.* calls and move realtime ones to st_exec_interrupt_handler()

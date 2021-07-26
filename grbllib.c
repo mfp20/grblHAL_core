@@ -60,7 +60,7 @@ grbl_motion_t motion;
 
 static bool stream_tx_blocking (void)
 {
-    // TODO: Restructure st_prep_segment_buffer() calls to be executed here during a long print.
+    // TODO: Restructure st_prep_stepper_buffer() calls to be executed here during a long print.
 
     grbl.on_execute_realtime(state_get());
 
