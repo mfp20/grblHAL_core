@@ -128,13 +128,13 @@ The interrupt handler manages the pointer in order to execute the right steps_bu
 [TODO]
 * write `execute_steps()`
 
-#### 4.3.1. st_prep_stepper_buffer()
+#### 4.3.1. st_prep_buffer()
 
-The realtime execution system continously calls `st_prep_stepper_buffer(true, false)` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
+The realtime execution system continously calls `st_prep_buffer(true, false)` to be sure the segment buffer never goes empty until all the planned blocks (ie: gcode issued by the user) are checked-out.
 
-In monolithic mode `st_prep_stepper_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
+In monolithic mode `st_prep_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
 
-When the offloading mode is selected, The realtime execution system continously calls `st_prep_stepper_buffer(false, false)` (empty function) because the motion computing runs on the other mcu core (or on host); the motion core runs `st_prep_stepper_buffer(true, true)` to (re)fill both buffers
+When the offloading mode is selected, The realtime execution system continously calls `st_prep_buffer(false, false)` (empty function) because the motion computing runs on the other mcu core (or on host); the motion core runs `st_prep_buffer(true, true)` to (re)fill both buffers
 
 ```
 void motion_computing_loop(void) {
@@ -142,7 +142,7 @@ void motion_computing_loop(void) {
     while (running) {
         ...
         // prep segment and steps buffers
-        st_prep_stepper_buffer(true, true);
+        st_prep_buffer(true, true);
     }
 }
 ```

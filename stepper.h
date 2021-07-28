@@ -124,6 +124,9 @@ typedef struct stepper {
     uint32_t step_event_count;      //!< Number of step pulse events to be output by this segment.
     st_block_t *exec_block;         //!< Pointer to the block data for the segment being executed.
     segment_t *exec_segment;        //!< Pointer to the segment beeing executed.
+#ifdef ENABLE_BACKLASH_COMPENSATION
+    bool backlash_motion;
+#endif
 } stepper_t;
 
 // Initialize and setup the stepper motor subsystem
@@ -151,7 +154,7 @@ void st_parking_setup_buffer();
 void st_parking_restore_buffer();
 
 // Reloads step segment buffer. Called continuously by realtime execution system.
-void st_prep_stepper_buffer(bool refill, bool steps);
+void st_prep_buffer(bool segments, bool steps);
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters();
