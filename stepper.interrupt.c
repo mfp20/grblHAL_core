@@ -1,4 +1,4 @@
-ISR_CODE void st_prep_steps_buffer(void)
+ISR_CODE void stepper_driver_interrupt_handler (void)
 {
 #ifdef ENABLE_BACKLASH_COMPENSATION
     static bool backlash_motion;

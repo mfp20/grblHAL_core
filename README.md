@@ -134,7 +134,7 @@ The realtime execution system continously calls `st_prep_buffer(true, false)` to
 
 In monolithic mode `st_prep_buffer(true, false)` (re)fills segment buffer only (as it used to do in old code).
 
-When the offloading mode is selected, The realtime execution system continously calls `st_prep_buffer(false, false)` (empty function) because the motion computing runs on the other mcu core (or on host); the motion core runs `st_prep_buffer(true, true)` to (re)fill both buffers
+When the offloading mode is selected, The realtime execution system continously calls `st_prep_buffer(false, false)` (empty function); the motion core runs `st_prep_buffer(true, true)` to (re)fill both buffers
 
 ```
 void motion_computing_loop(void) {
@@ -160,7 +160,6 @@ It has 2 jobs to do:
 2. call `sys` and `hal` to check state and set realtime parameters
 
 [TODO]
-* break current interrupt handler code in two parts, one for Bresenham and AMASS to be placed in `st_prep_steps_buffer()`, one for `sys` and `hal` calls
 
 ### 4.4. Other changes
 

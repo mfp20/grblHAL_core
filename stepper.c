@@ -68,16 +68,16 @@ typedef union {
 // data for its own use.
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE - 1];
 
-// Primary stepper segment ring buffer. Contains small, short line segments for the stepper
-// algorithm to execute, which are "checked-out" incrementally from the first block in the
-// planner buffer. Once "checked-out", the steps in the segments buffer cannot be modified by
-// the planner, where the remaining planner block steps still can.
+// Stepper segment ring buffer. Contains small, short line segments for the stepper algorithm
+// to turn into steps. Segments are "checked-out" incrementally from the first block 
+// in the planner buffer. Once "checked-out", the steps in the segments buffer cannot be modified
+// by the planner, where the remaining planner block steps still can.
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 // Step segment ring buffer indices
 static volatile segment_t *segment_buffer_tail;
 static segment_t *segment_buffer_head, *segment_next_head;
 
-// Stepper ISR data buffer.
+// Steps ring buffer for ISR to execute. Constains steps ready to be executed by the interrupt handler.
 static stepper_t steps_buffer[STEPS_BUFFER_SIZE];
 // Steps ring buffer indices
 static volatile uint32_t steps_buffer_tail, steps_buffer_current, steps_buffer_head;
@@ -301,168 +301,181 @@ ISR_CODE void st_go_idle ()
 ISR_CODE void st_prep_steps_buffer(void)
 {
     // current planner block being prepped
-    static st_block_t *current_block = NULL;
+    static st_block_t *block_current = NULL;
 
-    // the new stepper_t to prep
-    stepper_t *st_new = NULL;
+    // current segment being prepped
+    static segment_t *segment_current = NULL;
 
-    // If steps buffer have unused items and there are segments to prep...
-    if (( TODO ) && (segment_buffer_tail != segment_buffer_head)) {
+    // previous prepped step
+    static stepper_t *prev_step = NULL;
 
-        //
-        st_new = (stepper_t *) &steps_buffer[TODO];
-        // TODO need to memcpy 0s?
-        st_new->new_block = st_new->dir_change = false;
+    // current step being prepped
+    stepper_t *next_step = NULL;
 
-        // Set the step segment to prep.
-        st_new->exec_segment = (segment_t *)segment_buffer_tail;
+    if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE) {
+        // TODO the stepper_t to prep
+        next_step = &steps_buffer[TODO];
+    } else {
+        next_step = &steps_buffer[0];
+    }
 
-        // load number of steps to execute.
-        st_new->step_count = st_new->exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
+    if (next_step) { // If we have a buffer item to prep...
+        if (segment_current == NULL) { // ... and no segment is currently in prep...
+            if (segment_buffer_tail != segment_buffer_head) { // Anything in the segment buffer?
 
-        // If the new segment starts a new planner block, initialize stepper variables and counters.
-        if (current_block != st_new->exec_segment->exec_block) {
+                // clear previous data in next_step.
+                memset(next_step, 0, sizeof(stepper_t));
 
-            // switch current planner block
-            current_block = st_new->exec_segment->exec_block;
+                // Set the segment to prep.
+                next_step->exec_segment = (segment_t *)segment_buffer_tail;
 
-            //
-            if((st_new->dir_change = st_new->exec_block == NULL || st_new->dir_outbits.value != st_new->exec_segment->exec_block->direction_bits.value))
-                st_new->dir_outbits = st_new->exec_segment->exec_block->direction_bits;
-            st_new->exec_block = st_new->exec_segment->exec_block;
-            st_new->step_event_count = st_new->exec_block->step_event_count;
-            st_new->new_block = true;
-            #ifdef ENABLE_BACKLASH_COMPENSATION
-            st_new->backlash_motion = st_new->exec_block->backlash_motion;
-            #endif
+                // load number of steps to prep.
+                next_step->step_count = next_step->exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
 
-            // Initialize Bresenham line and distance counters
-            st_new->counter_x = st_new->counter_y = st_new->counter_z
-            #ifdef A_AXIS
-            = st_new->counter_a
-            #endif
-            #ifdef B_AXIS
-            = st_new->counter_b
-            #endif
-            #ifdef C_AXIS
-            = st_new->counter_c
-            #endif
-            #ifdef U_AXIS
-            = st_new->counter_u
-            #endif
-            #ifdef V_AXIS
-            = st_new->counter_v
-            #endif
-            = st_new->step_event_count >> 1;
+                // If the new segment starts a new planner block, initialize stepper variables and counters.
+                if (block_current != next_step->exec_segment->exec_block) {
 
-            // AMASS
-            #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-            memcpy(st_new->steps, st_new->exec_block->steps, sizeof(st_new->steps));
-            #endif
-        }
+                    // switch current planner block
+                    block_current = next_step->exec_segment->exec_block;
 
-        // AMASS
-        #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-        // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
-        st_new->amass_level = st_new->exec_segment->amass_level;
-        st_new->steps[X_AXIS] = st_new->exec_block->steps[X_AXIS] >> st_new->amass_level;
-        st_new->steps[Y_AXIS] = st_new->exec_block->steps[Y_AXIS] >> st_new->amass_level;
-        st_new->steps[Z_AXIS] = st_new->exec_block->steps[Z_AXIS] >> st_new->amass_level;
-        #ifdef A_AXIS
-        st_new->steps[A_AXIS] = st_new->exec_block->steps[A_AXIS] >> st_new->amass_level;
-        #endif
-        #ifdef B_AXIS
-        st_new->steps[B_AXIS] = st_new->exec_block->steps[B_AXIS] >> st_new->amass_level;
-        #endif
-        #ifdef C_AXIS
-        st_new->steps[C_AXIS] = st_new->exec_block->steps[C_AXIS] >> st_new->amass_level;
-        #endif
-        #ifdef U_AXIS
-        st_new->steps[U_AXIS] = st_new->exec_block->steps[U_AXIS] >> st_new->amass_level;
-        #endif
-        #ifdef V_AXIS
-        st_new->steps[V_AXIS] = st_new->exec_block->steps[V_AXIS] >> st_new->amass_level;
-        #endif
-        #endif
+                    //
+                    next_step->new_block = true;
+                    next_step->step_event_count = next_step->exec_block->step_event_count;
+                    if((next_step->dir_change = next_step->exec_block == NULL || next_step->dir_outbits.value != next_step->exec_segment->exec_block->direction_bits.value))
+                        next_step->dir_outbits = next_step->exec_segment->exec_block->direction_bits;
+                    next_step->exec_block = next_step->exec_segment->exec_block;
+                    #ifdef ENABLE_BACKLASH_COMPENSATION
+                    next_step->backlash_motion = next_step->exec_block->backlash_motion;
+                    #endif
 
-        // spindle
-        if(st_new->exec_segment->update_rpm) {
-            #ifdef SPINDLE_PWM_DIRECT
-            hal.spindle.update_pwm(st_new->exec_segment->spindle_pwm);
-            #else
-            hal.spindle.update_rpm(st_new->exec_segment->spindle_rpm);
-            #endif
+                    // Initialize Bresenham line and distance counters
+                    next_step->counter_x = next_step->counter_y = next_step->counter_z
+                    #ifdef A_AXIS
+                    = next_step->counter_a
+                    #endif
+                    #ifdef B_AXIS
+                    = next_step->counter_b
+                    #endif
+                    #ifdef C_AXIS
+                    = next_step->counter_c
+                    #endif
+                    #ifdef U_AXIS
+                    = next_step->counter_u
+                    #endif
+                    #ifdef V_AXIS
+                    = next_step->counter_v
+                    #endif
+                    = next_step->step_event_count >> 1;
+
+                    // AMASS
+                    #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+                    memcpy(next_step->steps, next_step->exec_block->steps, sizeof(next_step->steps));
+                    #endif
+                }
+
+                // AMASS
+                #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+                // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
+                next_step->amass_level = next_step->exec_segment->amass_level;
+                next_step->steps[X_AXIS] = next_step->exec_block->steps[X_AXIS] >> next_step->amass_level;
+                next_step->steps[Y_AXIS] = next_step->exec_block->steps[Y_AXIS] >> next_step->amass_level;
+                next_step->steps[Z_AXIS] = next_step->exec_block->steps[Z_AXIS] >> next_step->amass_level;
+                #ifdef A_AXIS
+                next_step->steps[A_AXIS] = next_step->exec_block->steps[A_AXIS] >> next_step->amass_level;
+                #endif
+                #ifdef B_AXIS
+                next_step->steps[B_AXIS] = next_step->exec_block->steps[B_AXIS] >> next_step->amass_level;
+                #endif
+                #ifdef C_AXIS
+                next_step->steps[C_AXIS] = next_step->exec_block->steps[C_AXIS] >> next_step->amass_level;
+                #endif
+                #ifdef U_AXIS
+                next_step->steps[U_AXIS] = next_step->exec_block->steps[U_AXIS] >> next_step->amass_level;
+                #endif
+                #ifdef V_AXIS
+                next_step->steps[V_AXIS] = next_step->exec_block->steps[V_AXIS] >> next_step->amass_level;
+                #endif
+                #endif
+            } else { // no steps to prepare, idle
+                return;
+            }
+        } else { // new step from the same segment, we copy everything (and new outbits will be set below)
+            memcpy(next_step, prev_step, sizeof(stepper_t));
         }
 
         // Execute step displacement profile by Bresenham line algorithm
 
         register axes_signals_t step_outbits = (axes_signals_t){0};
 
-        st_new->counter_x += st_new->steps[X_AXIS];
-        if (st_new->counter_x > st_new->step_event_count) {
+        next_step->counter_x += next_step->steps[X_AXIS];
+        if (next_step->counter_x > next_step->step_event_count) {
             step_outbits.x = On;
-            st_new->counter_x -= st_new->step_event_count;
+            next_step->counter_x -= next_step->step_event_count;
         }
 
-        st_new->counter_y += st_new->steps[Y_AXIS];
-        if (st_new->counter_y > st_new->step_event_count) {
+        next_step->counter_y += next_step->steps[Y_AXIS];
+        if (next_step->counter_y > next_step->step_event_count) {
             step_outbits.y = On;
-            st_new->counter_y -= st_new->step_event_count;
+            next_step->counter_y -= next_step->step_event_count;
         }
 
-        st_new->counter_z += st_new->steps[Z_AXIS];
-        if (st_new->counter_z > st_new->step_event_count) {
+        next_step->counter_z += next_step->steps[Z_AXIS];
+        if (next_step->counter_z > next_step->step_event_count) {
             step_outbits.z = On;
-            st_new->counter_z -= st_new->step_event_count;
+            next_step->counter_z -= next_step->step_event_count;
         }
 
         #ifdef A_AXIS
-        st_new->counter_a += st_new->steps[A_AXIS];
-        if (st_new->counter_a > st_new->step_event_count) {
+        next_step->counter_a += next_step->steps[A_AXIS];
+        if (next_step->counter_a > next_step->step_event_count) {
             step_outbits.a = On;
-            st_new->counter_a -= st_new->step_event_count;
+            next_step->counter_a -= next_step->step_event_count;
         }
         #endif
 
         #ifdef B_AXIS
-        st_new->counter_b += st_new->steps[B_AXIS];
-        if (st_new->counter_b > st_new->step_event_count) {
+        next_step->counter_b += next_step->steps[B_AXIS];
+        if (next_step->counter_b > next_step->step_event_count) {
             step_outbits.b = On;
-            st_new->counter_b -= st_new->step_event_count;
+            next_step->counter_b -= next_step->step_event_count;
         }
         #endif
 
         #ifdef C_AXIS
-        st_new->counter_c += st_new->steps[C_AXIS];
-        if (st_new->counter_c > st_new->step_event_count) {
+        next_step->counter_c += next_step->steps[C_AXIS];
+        if (next_step->counter_c > next_step->step_event_count) {
             step_outbits.c = On;
-            st_new->counter_c -= st_new->step_event_count;
+            next_step->counter_c -= next_step->step_event_count;
         }
         #endif
 
         #ifdef U_AXIS
-        st_new->counter_u += st_new->steps[U_AXIS];
-        if (st_new->counter_u > st_new->step_event_count) {
+        next_step->counter_u += next_step->steps[U_AXIS];
+        if (next_step->counter_u > next_step->step_event_count) {
             step_outbits.u = On;
-            st_new->counter_u -= st_new->step_event_count;
+            next_step->counter_u -= next_step->step_event_count;
         }
         #endif
 
         #ifdef V_AXIS
-        st_new->counter_v += st_new->steps[V_AXIS];
-        if (st_new->counter_v > st_new->step_event_count) {
+        next_step->counter_v += next_step->steps[V_AXIS];
+        if (next_step->counter_v > next_step->step_event_count) {
             step_outbits.v = On;
-            st_new->counter_v -= st_new->step_event_count;
+            next_step->counter_v -= next_step->step_event_count;
         }
         #endif
 
-        //
-        st_new->step_outbits.value = step_outbits.value;
+        // step ready
+        next_step->step_outbits.value = step_outbits.value;
 
-        // If segment is complete. Advance segment tail pointer.
-        if (st_new->step_count == 0 || --st_new->step_count == 0) {
+        // Decrement step count. If segment is complete. Advance segment tail pointer.
+        if (next_step->step_count == 0 || --next_step->step_count == 0) {
+            segment_current = next_step->exec_segment = NULL;
             segment_buffer_tail = segment_buffer_tail->next;
         }
+
+        // next run this step will be the previous one
+        prev_step = next_step;
     }
 }
 
@@ -470,26 +483,32 @@ ISR_CODE void st_exec_interrupt_handler(void)
 {
     if (BOARD_OFFLOAD_TO_HOST || BOARD_OFFLOAD_TO_CORE) {
         // TODO in offloaded mode the ISR must select the steps_buffer head
-        // start condition
-        if() {
-            hal.stepper.pulse_start(st);
-        }
     } else {
         // in monolithic mode the ISR must run Bresenham and AMASS to prepare steps_buffer[0]
         st_prep_steps_buffer();
+    }
 
-        // Start a step pulse when there is a block to execute.
-        if(st->exec_block) {
+    if (TODO) {
+    } else {
+        // Steps buffer empty. Shutdown.
+        st_go_idle();
+        // Ensure pwm is set properly upon completion of rate-controlled motion.
+        if (st->exec_block->dynamic_rpm && settings.mode == Mode_Laser)
+            hal.spindle.set_state((spindle_state_t){0}, 0.0f);
 
-            hal.stepper.pulse_start(st);
+        st->exec_block = NULL;
+        system_set_exec_state_flag(EXEC_CYCLE_COMPLETE); // Flag main program for cycle complete
 
-            if (st->step_count == 0) // Segment is complete. Discard current segment.
-                st->exec_segment = NULL;
-        }
+        return; // Nothing to do but exit.
     }
 
     // if we have steps to execute...
-    if (TODO) {
+    if (st) {
+
+        // Start a step pulse when there is a block to execute.
+        if(st->exec_block) {
+            hal.stepper.pulse_start(st);
+        }
 
         // If the segment is the first of a new planner block
         if (st->exec_block != st->exec_segment->exec_block) {
@@ -519,6 +538,15 @@ ISR_CODE void st_exec_interrupt_handler(void)
                 st->exec_block->message = NULL;
             }
 
+        }
+
+        // spindle
+        if(st->exec_segment->update_rpm) {
+            #ifdef SPINDLE_PWM_DIRECT
+            hal.spindle.update_pwm(st->exec_segment->spindle_pwm);
+            #else
+            hal.spindle.update_rpm(st->exec_segment->spindle_rpm);
+            #endif
         }
 
         // Check probing state.
@@ -601,18 +629,6 @@ ISR_CODE void st_exec_interrupt_handler(void)
         // During a homing cycle, lock out and prevent desired axes from moving.
         if (state_get() == STATE_HOMING)
             st->step_outbits.value &= sys.homing_axis_lock.mask;
-
-    } else {
-        // Steps buffer empty. Shutdown.
-        st_go_idle();
-        // Ensure pwm is set properly upon completion of rate-controlled motion.
-        if (st->exec_block->dynamic_rpm && settings.mode == Mode_Laser)
-            hal.spindle.set_state((spindle_state_t){0}, 0.0f);
-
-        st->exec_block = NULL;
-        system_set_exec_state_flag(EXEC_CYCLE_COMPLETE); // Flag main program for cycle complete
-
-        return; // Nothing to do but exit.
     }
 }
 

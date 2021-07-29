@@ -112,21 +112,25 @@ typedef struct stepper {
     #ifdef V_AXIS
            , counter_v              //!< Counter variable for the Bresenham line tracer, V-axis
     #endif
-;
+    ;
+    uint32_t steps[N_AXIS];         //!< Number of step pulse event events per axis step pulse generated.
+
+    // the following are used in the board driver gpio output function
     bool new_block;                 //!< Set to true when a new block is started, might be referenced by driver code for advanced functionality.
+    uint32_t step_event_count;      //!< The total number of steps required to complete this segment.
+    uint_fast16_t step_count;       //!< Steps remaining in this segment.
     bool dir_change;                //!< Set to true on direction changes, might be referenced by driver for advanced functionality.
+    uint_fast8_t amass_level;       //!< AMASS level for this segment.
+#ifdef ENABLE_BACKLASH_COMPENSATION
+    bool backlash_motion;           //!< ...
+#endif
+
     axes_signals_t step_outbits;    //!< The stepping signals to be output.
     axes_signals_t dir_outbits;     //!< The direction signals to be output. The direction signals may be output only when \ref stepper.dir_change is true to reduce overhead.
-    uint32_t steps[N_AXIS];         //!< Number of step pulse event events per axis step pulse generated.
-    uint_fast8_t amass_level;       //!< AMASS level for this segment.
+
 //    uint_fast16_t spindle_pwm;
-    uint_fast16_t step_count;       //!< Steps remaining in line segment motion.
-    uint32_t step_event_count;      //!< Number of step pulse events to be output by this segment.
     st_block_t *exec_block;         //!< Pointer to the block data for the segment being executed.
     segment_t *exec_segment;        //!< Pointer to the segment beeing executed.
-#ifdef ENABLE_BACKLASH_COMPENSATION
-    bool backlash_motion;
-#endif
 } stepper_t;
 
 // Initialize and setup the stepper motor subsystem
