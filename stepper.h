@@ -94,6 +94,7 @@ typedef struct st_segment {
 
 //! Stepper ISR data struct. Contains the running data for the main stepper ISR.
 typedef struct stepper {
+    // variables used to calculate Bresenham and AMASS (ie: HAL drivers don't use it)
     uint32_t counter_x,             //!< Counter variable for the Bresenham line tracer, X-axis
              counter_y,             //!< Counter variable for the Bresenham line tracer, Y-axis
              counter_z              //!< Counter variable for the Bresenham line tracer, Z-axis
@@ -115,20 +116,26 @@ typedef struct stepper {
     ;
     uint32_t steps[N_AXIS];         //!< Number of step pulse event events per axis step pulse generated.
 
-    // the following are used in the board driver gpio output function
+    // steps ready to be output, buffer
+    axes_signals_t *step_outbits;    //!< The stepping signals to be output.
+    axes_signals_t *dir_outbits;     //!< The direction signals to be output. The direction signals may be output only when \ref stepper.dir_change is true to reduce overhead.
+
+    // the following variables are used in the board driver gpio output function
     bool new_block;                 //!< Set to true when a new block is started, might be referenced by driver code for advanced functionality.
+    bool dir_change;                //!< Set to true on direction changes, might be referenced by driver for advanced functionality.
     uint32_t step_event_count;      //!< The total number of steps required to complete this segment.
     uint_fast16_t step_count;       //!< Steps remaining in this segment.
-    bool dir_change;                //!< Set to true on direction changes, might be referenced by driver for advanced functionality.
     uint_fast8_t amass_level;       //!< AMASS level for this segment.
 #ifdef ENABLE_BACKLASH_COMPENSATION
     bool backlash_motion;           //!< ...
 #endif
+//    uint_fast16_t spindle_pwm;
 
+    //
     axes_signals_t step_outbits;    //!< The stepping signals to be output.
     axes_signals_t dir_outbits;     //!< The direction signals to be output. The direction signals may be output only when \ref stepper.dir_change is true to reduce overhead.
 
-//    uint_fast16_t spindle_pwm;
+    //
     st_block_t *exec_block;         //!< Pointer to the block data for the segment being executed.
     segment_t *exec_segment;        //!< Pointer to the segment beeing executed.
 } stepper_t;
