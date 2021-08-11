@@ -128,6 +128,13 @@ int grbl_enter (void)
     hal.stepper.interrupt_callback = stepper_driver_interrupt_handler;
     hal.stream_blocking_callback = stream_tx_blocking;
     hal.signals_cap.reset = hal.signals_cap.feed_hold = hal.signals_cap.cycle_start = On;
+    if (BOARD_OFFLOAD_TO_HOST) {
+        hal.pop_motion_data = pop_motion_data;
+    }
+    else
+    {
+        hal.pop_motion_data = NULL;
+    }
 
     sys.cold_start = true;
 

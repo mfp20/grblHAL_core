@@ -135,13 +135,13 @@ bool protocol_main_loop (void)
         grbl.report.feedback_message(Message_AlarmLock);
     } else {
         state_set(STATE_IDLE);
-#ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+        #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
         // Check if the safety door is open.
         if (!settings.flags.safety_door_ignore_when_idle && hal.control.get_state().safety_door_ajar) {
             system_set_exec_state_flag(EXEC_SAFETY_DOOR);
             protocol_execute_realtime(); // Enter safety door mode. Should return as IDLE state.
         }
-#endif
+        #endif
         // All systems go!
         system_execute_startup(); // Execute startup script.
     }
@@ -217,23 +217,23 @@ bool protocol_main_loop (void)
                     gc_state.last_error = grbl.on_user_command(line);
                 else if (state_get() & (STATE_ALARM|STATE_ESTOP|STATE_JOG)) // Everything else is gcode. Block if in alarm, eStop or jog mode.
                     gc_state.last_error = Status_SystemGClock;
-#if COMPATIBILITY_LEVEL == 0
+                #if COMPATIBILITY_LEVEL == 0
                 else if(gc_state.last_error == Status_OK || gc_state.last_error == Status_GcodeToolChangePending) { // Parse and execute g-code block.
-#else
+                #else
                 else { // Parse and execute g-code block.
 
-#endif
-                    gc_state.last_error = gc_execute_block(line, user_message.show ? user_message.message : NULL);
+                #endif
+                    gc_state.last_error = execute_gcode(line, user_message.show ? user_message.message : NULL);
                 }
 
                 // Add a short delay for each block processed in Check Mode to
                 // avoid overwhelming the sender with fast reply messages.
                 // This is likely to happen when streaming is done via a protocol where
                 // the speed is not limited to 115200 baud. An example is native USB streaming.
-#if CHECK_MODE_DELAY
+                #if CHECK_MODE_DELAY
                 if(state_get() == STATE_CHECK_MODE)
                     hal.delay_ms(CHECK_MODE_DELAY, NULL);
-#endif
+                #endif
 
                 grbl.report.status_message(gc_state.last_error);
 
@@ -317,7 +317,7 @@ bool protocol_main_loop (void)
             else if (state_get() & (STATE_ALARM|STATE_ESTOP|STATE_JOG)) // Everything else is gcode. Block if in alarm, eStop or jog state.
                 grbl.report.status_message(Status_SystemGClock);
             else // Parse and execute g-code block.
-                gc_execute_block(xcommand, NULL);
+                execute_gcode(xcommand, NULL);
 
             xcommand[0] = '\0';
         }

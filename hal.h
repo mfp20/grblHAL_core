@@ -679,6 +679,15 @@ typedef struct {
     driver_cap_t driver_cap;                //!< Basic driver capabilities flags.
     control_signals_t signals_cap;          //!< Control input signals supported by the core.
 
+    // offloaded mode
+
+    /*! \brief Pops data from host.
+
+    In offloading to host, it pops data from host. Ignored in monolithic mode.
+    \returns success/fail.
+    */
+    bool (*pop_motion_data)(int count, uint8_t *data);
+
 } grbl_hal_t;
 
 extern grbl_hal_t hal; //!< Global HAL struct.

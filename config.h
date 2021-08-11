@@ -623,4 +623,11 @@ __NOTE:__ these definitions are only referenced in this file. Do __NOT__ change!
 
 #endif // DEFAULT_HOMING_ENABLE
 
+// offload motion computing to second core
+#define BOARD_OFFLOAD_TO_CORE  0
+// offload motion computing to host
+#define BOARD_OFFLOAD_TO_HOST  0
+// offload grbl core to second core. Implies BOARD_OFFLOAD_TO_HOST.
+#define BOARD_OFFLOAD_GRBL_CORE 0
+
 #endif

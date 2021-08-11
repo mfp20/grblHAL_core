@@ -43,7 +43,7 @@ __NOTE:__ This data is copied from the prepped planner blocks so that the planne
  data for its own use. */
 typedef struct st_block {
     uint_fast8_t id;                  //!< Id may be used by driver to track changes
-    struct st_block *next;            //!< Pointer to next element in cirular list of blocks
+    //
     uint32_t steps[N_AXIS];
     uint32_t step_event_count;
     axes_signals_t direction_bits;
@@ -55,12 +55,14 @@ typedef struct st_block {
     output_command_t *output_commands; //!< Output commands (linked list) to be performed when block is executed
     bool dynamic_rpm;                  //!< Tracks motions that require dynamic RPM adjustment
     bool backlash_motion;
+    //
+    struct st_block *next;            //!< Pointer to next element in cirular list of blocks
 } st_block_t;
 
 typedef struct st_segment {
     uint_fast8_t id;                //!< Id may be used by driver to track changes
-    struct st_segment *next;        //!< Pointer to next element in cirular list of segments
     st_block_t *exec_block;         //!< Pointer to the block data for the segment
+    //
     uint32_t cycles_per_tick;       //!< Step distance traveled per ISR tick, aka step rate.
     float current_rate;
     float target_position;          //!< Target position of segment relative to block start, used by spindle sync code
@@ -74,7 +76,9 @@ typedef struct st_segment {
     bool spindle_sync;              //!< True if block is spindle synchronized
     bool cruising;                  //!< True when in cruising part of profile, only set for spindle synced moves
     uint_fast8_t amass_level;       //!< Indicates AMASS level for the ISR to execute this segment
-} segment_t;
+    //
+    struct st_segment *next;        //!< Pointer to next element in cirular list of segments
+} st_segment_t;
 
 //! Stepper ISR data struct. Contains the running data for the main stepper ISR.
 typedef struct stepper {
@@ -107,7 +111,7 @@ typedef struct stepper {
     uint_fast16_t step_count;       //!< Steps remaining in line segment motion.
     uint32_t step_event_count;      //!< Number of step pulse events to be output by this segment.
     st_block_t *exec_block;         //!< Pointer to the block data for the segment being executed.
-    segment_t *exec_segment;        //!< Pointer to the segment beeing executed.
+    st_segment_t *exec_segment;        //!< Pointer to the segment beeing executed.
 } stepper_t;
 
 // Initialize and setup the stepper motor subsystem
