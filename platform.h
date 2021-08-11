@@ -21,12 +21,14 @@
 
 #pragma once
 
-#if defined(STM32F103xB) || defined(STM32F401xC) ||  defined(STM32F407xx) || defined(STM32F411xE) || defined(STM32F446xx) || defined(STM32F756xx)
+#if defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F401xC) ||  defined(STM32F407xx) || defined(STM32F411xE) || defined(STM32F446xx) || defined(STM32F756xx)
 #define STM32_PLATFORM
 #endif
 
 #if defined(STM32_PLATFORM) || defined(__LPC17XX__) ||  defined(__IMXRT1062__)
 #define UINT32FMT "%lu"
+#define UINT32SFMT "lu"
 #else
 #define UINT32FMT "%u"
+#define UINT32SFMT "u"
 #endif

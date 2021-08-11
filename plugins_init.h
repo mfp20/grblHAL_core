@@ -23,13 +23,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if PLASMA_ENABLE
-    extern void plasma_init (void);
-    plasma_init();
-#endif
-
 #if TRINAMIC_ENABLE
-    extern void trinamic_init (void);
+    extern bool trinamic_init (void);
     trinamic_init();
 #endif
 
