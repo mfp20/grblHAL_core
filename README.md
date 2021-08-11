@@ -1,80 +1,70 @@
-## grblHAL ##
+# grblHAL offloaded kernel ##
 
-grblHAL has [many extensions](https://github.com/grblHAL/core/wiki) that may cause issues with some senders. As a workaround for these a [compile time option](https://github.com/grblHAL/core/wiki/Changes-from-grbl-1.1#workaround) has been added that disables extensions selectively. 
+## 1. Introduction
+**This is a development version, not for users. It can literally set your house on fire.**
 
-__IMPORTANT!__ grblHAL defaults to normally closed \(NC\) switches for inputs, if none are connected when testing it is likely that the controller will start in alarm mode.  
-Temporarily short the Reset, E-Stop and Safety Door<sup>4</sup> inputs to ground or invert the corresponding inputs by setting `$14=73` to avoid that.  
-Please check out [this Wiki page](https://github.com/grblHAL/core/wiki/Changes-from-grbl-1.1) for additional important information.
+This is a fork of [grblHAL core](https://github.com/grblHAL/core), modified to split the core from the motion computing so that it can be offloaded on host, extra cores in the mcu, or external co-processor (ex: fpga).
+This change is needed in order to import a couple of ideas from [Klipper firmware](https://www.klipper3d.org/) (or on [github](https://github.com/KevinOConnor/klipper)):
+* off load the computational heavy-lifting from the MCU in order to maximize performance,
+* being able to use more MCUs/boards in sync as one single printer.
 
-Windows users may try [ioSender](https://github.com/terjeio/Grbl-GCode-Sender), binary releases can be found [here](https://github.com/terjeio/Grbl-GCode-Sender/releases).
-It has been written to complement grblHAL and has features such as proper keyboard jogging, advanced probing, automatic reconfiguration of DRO display for up to 6 axes, lathe mode including conversational G-Code generation, 3D rendering, macro support etc. etc.
+The name is changed to reflect changes: grblHAL+klipper become grblhk, and "core" is changed to "kernel" to avoid ambiguities with mcu cores. The board driver become the "HAL".
 
----
+## 2. The Plan
 
-Latest build date is 20210608, see the [changelog](changelog.md) for details.
+The goal is to make the motion computation optional, in order to be able to offload it to another core or on another mcu (ex: main host currently sending g-codes).
+The plan is to go from current architecture to a new one, introducing minimum changes to core code and board drivers.
 
----
+*1. Current architecture (courtesy of http://awesome.tech/)*
+[![Current architecture](docs/current_architecture.png?raw=true)](https://awesome.tech/grbl-demystified/)
 
-__NOTE:__ Arduino drivers has now been converted to Arduino libraries, [installation and compilation procedure](https://github.com/grblHAL/core/wiki/Compiling-GrblHAL) has been changed!
+*2. New architecture*
+![New architecture](docs/new_architecture.png?raw=true)
 
----
+Basically there's the need to push motion data directly in the last buffer available before the execution of steps, so that new use cases can be enabled.
 
-grblHAL is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling and is based on the [Arduino version of grbl](https://github.com/gnea/grbl). It is mainly aimed at ARM processors \(or other 32-bit MCUs\) with ample amounts of RAM and flash \(compared to AVR 328p\) and requires a [hardware driver](https://github.com/grblHAL/drivers) to be functional.
-Currently drivers are available for more than 15 different processors/processor families all of which share the same core codebase.
+*3. New use cases*
+![Use cases](docs/use_cases.png?raw=true)
 
-grblHAL has an open architecture allowing [plugins](https://github.com/grblHAL/plugins) to extend functionality.
-User made plugins can be added to grblHAL without changing a single file in the source<sup>1</sup>, and allows for a wide range extensions to be added.
-New M-codes can be added, space for plugin specific settings can be allocated, events can be subscribed to etc. etc.  
-Adding code to drive an ATC, extra outputs or even adding a UI<sup>2</sup> has never been easier. You can even add your own [driver](https://github.com/grblHAL/Templates/tree/master/arm-driver) if you feel so inclined.
+Use case nr. 4 shows the HAL running on core0, grbl core running on core1 and the motion is computed on the host.
+In this way the I/O, the core tasks and the motion computing can run concurrently, maximizing performance
+and reducing jitter as pure I/O irqs raise on a different mcu core.
 
-HAL = Hardware Abstraction Layer
+Use case nr. 5 instead, shows multiple boards working together. On startup the host computes deltas between its own time and every other mcu "board time"; then maintain this deltas using specialized sync messages to minimize jitter. All the motion is computed on host using its own "build time" and then steps are sent using the appropriate board times (computed using the deltas) in order to trigger events at the right time on every board.
 
-The controller is written in highly optimized C utilizing features of the supported processors to achieve precise timing and asynchronous operation.
-It is able to maintain up to 300kHz<sup>3</sup> of stable, jitter free control pulses.
+Changes must take into consideration the concurrency issues and introduce proper semaphores, mutexes, critical sections and so on.
+At the same time there's the need to add some extra sync information to critical structures in order to enable syncing among multiple MCUs and the host.
 
-It accepts standards-compliant g-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, all other primary g-code commands. Macro functions, variables, and some canned cycles are not supported, but we think GUIs can do a much better job at translating them into straight g-code anyhow.
+Currently changes are implemented using some defines in config.h, so the offloading is set at compile time to produce an experimental build. 
+But the final version might be able to set offloading at runtime (ex: on boot).
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+## 3. Vanilla workflow
 
-This is a port/rewrite of [grbl 1.1f](https://github.com/gnea/grbl) and should be compatible with GCode senders compliant with the specifications for that version. It should be possible to change default compile-time configurations if problems arise, eg. the default serial buffer sizes has been increased in some of the [drivers](https://github.com/grblHAL/drivers) provided.
+Current input and motion computation goes as follow:
+1. main loop identifies lines incoming on the serial console, clean up and capitalize,
+2. if the line is a g-code, it is handled to the g-code parser
+3. if the g-code is a motion command, prepare the plan_line_data_t and call one of the motion control methods
+4. control methods (ex: mc_arc) approximate curves in multiple lines and call the planner
+5. the planner (re)computes velocity profiles and adds a new linear movement (plan_block_t) to its buffer
+6. the main program constantly call the stepper to turn planner blocks into segments and push them in the segments buffer
+7. the stepper driver interrupt pops pre-computed segments from the step segment buffer and executes them by pulsing the stepper pins
 
-<sup>1</sup> This feature is only to be used for private plugins, if shared then a single call must be added to the driver code of the target processors.   
-<sup>2</sup> I do not usually recommend doing this, and I will not accept pull requests for any. However I may add a link to the github repository for any that might be made.  
-<sup>3</sup> Driver/processor dependent.  
-<sup>4</sup> Not enabled by default if building from source, but may be enabled in prebuilt firmware.
+The motion planner recomputes all block velocities each time a new block is added, so every block in buffer can change in time. Then the stepper pops the first block in queue to make segments.
+To avoid clashes between the motion planner recalculating all blocks in buffer and the motion stepper popping the blocks, each time the stepper starts a new block it will 'check out' the block, 
+making the planner unable to modify it again. When the stepper finishes one block, it sets the block as finished so the planner can re-use the same memory location in its circular buffer. 
+Note: blocks aren't really popped/pushed as it is a circular buffer and its elements are reused.
 
-***
+Points 3-6 are most of the computational heavy lifting; a very little more computing happens in the interrupt handler (step 7).
 
-```
-List of Supported G-Codes:
-  - Non-Modal Commands: G4, G10L2, G10L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
-  - Additional Non-Modal Commands: G10L1*, G10L10*, G10L11*
-  - Motion Modes: G0, G1, G2, G3, G5, G38.2, G38.3, G38.4, G38.5, G80, G33*
-  - Canned cycles: G73, G81, G82, G83, G85, G86, G89, G98, G99
-  - Repetitive cycles: G76*
-  - Feed Rate Modes: G93, G94, G95*, G96*, G97*
-  - Unit Modes: G20, G21
-  - Scaling: G50, G51
-  - Lathe modes: G7*, G8*
-  - Distance Modes: G90, G91
-  - Arc IJK Distance Modes: G91.1
-  - Plane Select Modes: G17, G18, G19
-  - Tool Length Offset Modes: G43*, G43.1, G43.2*, G49
-  - Cutter Compensation Modes: G40
-  - Coordinate System Modes: G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3
-  - Control Modes: G61
-  - Program Flow: M0, M1, M2, M30, M60
-  - Coolant Control: M7, M8, M9
-  - Spindle Control: M3, M4, M5
-  - Tool Change: M6* (Two modes possible: manual** - supports jogging, ATC), M61
-  - Switches: M49, M50, M51, M53
-  - Output control***: M62, M63, M64, M65, M66, M67, M68
-  - Valid Non-Command Words: A*, B*, C*, F, H*, I, J, K, L, N, P, Q*, R, S, T, X, Y, Z
+At point 3 the g-code input of the pipeline is very small (just a few bytes of text), optimal for transmition on a communication interface (ex: usb to host) or multithread-safe queue (to another mcu core).
+Each g-code can produce multiple lines, each line multiple blocks, each block multiple segments, and each segment is made of many motor steps. 
+At point 6 the g-code has been translated in steps and counts many bytes of binary data added to the segments buffer.
+If motion offloading is selected, the same steps 3 to 7 run on mcu's second core or on external host. Steps 2, 6 and 7 are slightly changed in order to implement the new architecture.
 
-  *  driver/configuration dependent.
-  ** requires compatible GCode sender due to protocol extensions, new state and RT command.
-  *** number of outputs supported dependent on driver implementation.
-```
+## 4. Notes
 
----
-2021-06-08
+The reference board for testing this grbl core is [RPi Pico and the customized board driver](https://github.com/mfp20/grblhk-hal-RP2040).
+
+For more info, to partecipate, or to have an idea of current status have a look at
+- [original discussion](https://github.com/grblHAL/core/discussions/34)
+- [details about changes in code](https://github.com/grblHAL/core/discussions/52)
