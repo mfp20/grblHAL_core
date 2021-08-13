@@ -68,3 +68,4 @@ The reference board for testing this grbl core is [RPi Pico and the customized b
 For more info, to partecipate, or to have an idea of current status have a look at
 - [original discussion](https://github.com/grblHAL/core/discussions/34)
 - [details about changes in code](https://github.com/grblHAL/core/discussions/52)
+- [details about the protocol](https://github.com/grblHAL/core/discussions/55)

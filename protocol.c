@@ -742,8 +742,7 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
             break;
 
         case CMD_BIN:
-            binary_mode = protocol_binary_dispatch(c);
-            drop = true;
+            binary_mode = drop = true;
             break;
 
         case CMD_STOP:

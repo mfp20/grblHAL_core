@@ -1,4 +1,3 @@
-
 #include "protocol_bin.h"
 
 bool binary_mode = false;
@@ -29,9 +28,7 @@ bool protocol_binary_dispatch(char c) {
                     return unknown_binary_type(c);
                 break;
             default:
-                // abort binary mode
                 binary_type = 0;
-                return false;
         }
     }
     else
@@ -48,6 +45,6 @@ bool protocol_binary_dispatch(char c) {
                     return unknown_binary_type(c);
         }
     }
-    //
+    // abort binary mode
     return false;
 }
