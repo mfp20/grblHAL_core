@@ -670,10 +670,9 @@ void st_prep_buffer()
                 // TODO implement protocol to parse data
                 // TODO refill st_block_buffer[SEGMENT_BUFFER_SIZE - 1];
                 // TODO refill st_segment_buffer[SEGMENT_BUFFER_SIZE];
-                // if new segment
-                    // Increment segment pointers, so stepper ISR can immediately execute it.
-                    //st_segment_buffer_head = segment_next_head;
-                    //segment_next_head = segment_next_head->next;
+                // Increment segment pointers, so stepper ISR can immediately execute it.
+                //st_segment_buffer_head = segment_next_head;
+                //segment_next_head = segment_next_head->next;
             }
             else
             {

@@ -32,6 +32,7 @@
 #include "motion_control.h"
 #include "sleep.h"
 #include "protocol.h"
+#include "protocol_bin.h"
 #include "limits.h"
 
 #ifndef RT_QUEUE_SIZE
@@ -509,11 +510,11 @@ bool protocol_exec_rt_system (void)
 
             gc_init();
             plan_reset();
-/*            if(sys.alarm_pending == Alarm_ProbeProtect) {
+            /* if(sys.alarm_pending == Alarm_ProbeProtect) {
                 st_go_idle();
                 system_set_exec_alarm(sys.alarm_pending);
                 sys.alarm_pending = Alarm_None;
-            } else*/
+            } else */
             st_reset();
             sync_position();
             flush_override_buffers();
@@ -724,6 +725,12 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
 
     bool drop = false;
 
+    // if we are in binary mode the input is stolen and all chars trapped
+    if (binary_mode) {
+        binary_mode = protocol_binary_dispatch(c);
+        return true;
+    }
+
     // 1. Process characters in the ranges 0x - 1x and 8x-Ax
     // Characters with functions assigned are always acted upon even when the input stream
     // is redirected to a non-interactive stream such as from a SD card.
@@ -732,6 +739,11 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
 
         case '\n':
         case '\r':
+            break;
+
+        case CMD_BIN:
+            binary_mode = protocol_binary_dispatch(c);
+            drop = true;
             break;
 
         case CMD_STOP:
@@ -747,13 +759,13 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
             drop = true;
             break;
 
-#if COMPATIBILITY_LEVEL == 0
+        #if COMPATIBILITY_LEVEL == 0
         case CMD_EXIT: // Call motion control reset routine.
             mc_reset();
             sys.flags.exit = On;
             drop = true;
             break;
-#endif
+        #endif
 
         case CMD_STATUS_REPORT_ALL: // Add all statuses on to report
             {
@@ -793,10 +805,10 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
             char_counter = 0;
             drop = true;
             hal.stream.cancel_read_buffer();
-#ifdef KINEMATICS_API // needed when kinematics algorithm segments long jog distances (as it blocks reading from input stream)
+            #ifdef KINEMATICS_API // needed when kinematics algorithm segments long jog distances (as it blocks reading from input stream)
             if (state_get() & STATE_JOG) // Block all other states from invoking motion cancel.
                 system_set_exec_state_flag(EXEC_MOTION_CANCEL);
-#endif
+            #endif
             break;
 
         case CMD_GCODE_REPORT:

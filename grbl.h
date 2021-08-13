@@ -95,6 +95,7 @@
 // g-code programs, maybe selected for interface programs.
 // NOTE: If changed, manually update help message in report.c.
 
+#define CMD_BIN  0x01 // SOH
 #define CMD_EXIT 0x03 // ctrl-C (ETX)
 #define CMD_REBOOT 0x14 // ctrl-T (DC4) - only acted upon if preceeded by 0x1B (ESC)
 #define CMD_RESET 0x18 // ctrl-X (CAN)
