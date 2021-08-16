@@ -56,20 +56,30 @@
 #define CTRL_DEL  0x7F
 #define CTRL_EOL  "\r\n"
 
-#define MSG_TYPE_CMD_RT 0x01 // realtime command
-#define MSG_TYPE_CMD_OV 0x02 // override command
-#define MSG_TYPE_BUFFER 0x03 // buffer data
-#define MSG_TYPE_PLUGIN 0xff // unknown message, might be for plugins
+#define BIN_BUFFER_SIZE 1024
+#define COBS_DELIMITER 0x00
 
+#define MSG_TYPE_COMMAND 0x01 // grblhk command
+#define MSG_TYPE_GCODE   0x02 // gcode command
+#define MSG_TYPE_BUFFER  0x03 // buffer data
+#define MSG_TYPE_USER    0x04 // user input
+#define MSG_TYPE_UNKNOWN 0xff // unknown message, might be for plugins
+
+typedef uint16_t (*crc_ptr)(uint16_t existing_crc, uint8_t new_byte);
+typedef bool (*binary_send_ptr)(uint8_t b);
 typedef bool (*binary_parser_ptr)(char c);
 
 extern bool binary_mode;
 
-extern binary_parser_ptr cmd_rt_parser;
-extern binary_parser_ptr cmd_ov_parser;
-extern binary_parser_ptr buffer_parser;
+extern crc_ptr crc;
+extern binary_send_ptr binary_send;
+extern binary_parser_ptr command_parser;
+extern binary_parser_ptr gcode_parser;
+extern binary_parser_ptr buffer_data;
+extern binary_parser_ptr user_input;
 extern binary_parser_ptr unknown_binary_type;
 
-bool protocol_binary_dispatch(char c);
+void protocol_binary_put(uint16_t size, uint8_t *message);
+bool protocol_binary_get(char c);
 
 #endif

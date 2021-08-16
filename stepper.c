@@ -714,13 +714,13 @@ void st_prep_buffer()
                     st_prep_block = st_prep_block->next;
 
                     uint_fast8_t idx = N_AXIS;
-                #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+                    #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
                     do {
                         idx--;
                         st_prep_block->steps[idx] = (pl_block->steps[idx] << 1);
                     } while(idx);
                     st_prep_block->step_event_count = (pl_block->step_event_count << 1);
-                #else
+                    #else
                     // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS
                     // level, such that we never divide beyond the original data anywhere in the algorithm.
                     // If the original data is divided, we can lose a step from integer roundoff.
@@ -729,7 +729,7 @@ void st_prep_buffer()
                         st_prep_block->steps[idx] = pl_block->steps[idx] << MAX_AMASS_LEVEL;
                     } while(idx);
                     st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
-                #endif
+                    #endif
 
                     st_prep_block->direction_bits = pl_block->direction_bits;
                     st_prep_block->programmed_rate = pl_block->programmed_rate;

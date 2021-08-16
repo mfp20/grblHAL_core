@@ -727,7 +727,7 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
 
     // if we are in binary mode the input is stolen and all chars trapped
     if (binary_mode) {
-        binary_mode = protocol_binary_dispatch(c);
+        binary_mode = protocol_binary_getc(c);
         return true;
     }
 
@@ -742,7 +742,9 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
             break;
 
         case CMD_BIN:
-            binary_mode = drop = true;
+            // SOH sets binary mode. Next chars will be trapped...
+            binary_mode = protocol_binary_getc(c);
+            drop = true;
             break;
 
         case CMD_STOP:
